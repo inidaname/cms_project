@@ -27,13 +27,18 @@ type Querier interface {
 	DeleteTenant(ctx context.Context, id uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	GetInvoiceByID(ctx context.Context, id uuid.UUID) (Invoice, error)
+	GetInvoiceStatusSummary(ctx context.Context, tenantID uuid.UUID) ([]GetInvoiceStatusSummaryRow, error)
 	GetInvoiceSummary(ctx context.Context, id uuid.UUID) (GetInvoiceSummaryRow, error)
 	GetInvoiceWithPayments(ctx context.Context, arg GetInvoiceWithPaymentsParams) ([]GetInvoiceWithPaymentsRow, error)
+	GetOutstandingInvoices(ctx context.Context, tenantID uuid.UUID) ([]GetOutstandingInvoicesRow, error)
 	GetPaymentByID(ctx context.Context, id uuid.UUID) (Payment, error)
+	GetPaymentProviderSummary(ctx context.Context, tenantID uuid.UUID) ([]GetPaymentProviderSummaryRow, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
+	GetRevenueOverTime(ctx context.Context, tenantID uuid.UUID) ([]GetRevenueOverTimeRow, error)
 	GetTenantByDomain(ctx context.Context, domain sql.NullString) (Tenant, error)
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
 	GetTenantRevenue(ctx context.Context, id uuid.UUID) (GetTenantRevenueRow, error)
+	GetTopCustomers(ctx context.Context, arg GetTopCustomersParams) ([]GetTopCustomersRow, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	ListInvoicesByTenant(ctx context.Context, tenantID uuid.UUID) ([]Invoice, error)
