@@ -7,6 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type Role string
+
+const (
+	RoleOwner Role = "OWNER"
+	RoleAdmin Role = "ADMIN"
+	RoleUser  Role = "USER"
+)
+
 // ===== Entity =====
 type User struct {
 	ID        uuid.UUID

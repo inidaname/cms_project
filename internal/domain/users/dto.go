@@ -15,6 +15,12 @@ type RegisterDTO struct {
 	Role     string    `json:"role"`
 }
 
+type LoginDTO struct {
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
 // Converts DTO into sqlc params for repository
 func (dto RegisterDTO) ToParams() model.CreateUserParams {
 	return model.CreateUserParams{
