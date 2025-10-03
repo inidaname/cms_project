@@ -88,10 +88,17 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 
 const listProductsByTenant = `-- name: ListProductsByTenant :many
 SELECT id, tenant_id, name, description, price_cents, currency, created_at FROM products WHERE tenant_id = $1 ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) ListProductsByTenant(ctx context.Context, tenantID uuid.UUID) ([]Product, error) {
-	rows, err := q.db.QueryContext(ctx, listProductsByTenant, tenantID)
+type ListProductsByTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+func (q *Queries) ListProductsByTenant(ctx context.Context, arg ListProductsByTenantParams) ([]Product, error) {
+	rows, err := q.db.QueryContext(ctx, listProductsByTenant, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,8 @@ RETURNING *;
 SELECT * FROM payments WHERE id = $1 LIMIT 1;
 
 -- name: ListPaymentsByInvoice :many
-SELECT * FROM payments WHERE invoice_id = $1 ORDER BY created_at DESC;
+SELECT * FROM payments WHERE invoice_id = $1 ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
 
 -- name: UpdatePaymentStatus :one
 UPDATE payments

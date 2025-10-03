@@ -10,7 +10,8 @@ SELECT * FROM tenants WHERE id = $1 LIMIT 1;
 SELECT * FROM tenants WHERE domain = $1 LIMIT 1;
 
 -- name: ListTenants :many
-SELECT * FROM tenants ORDER BY created_at DESC;
+SELECT * FROM tenants ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
 
 -- name: DeleteTenant :exec
 DELETE FROM tenants WHERE id = $1;

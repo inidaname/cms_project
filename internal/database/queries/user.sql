@@ -10,7 +10,10 @@ SELECT * FROM users WHERE id = $1 LIMIT 1;
 SELECT * FROM users WHERE tenant_id = $1 AND email = $2 LIMIT 1;
 
 -- name: ListUsersByTenant :many
-SELECT * FROM users WHERE tenant_id = $1 ORDER BY created_at DESC;
+SELECT * FROM users 
+WHERE tenant_id = $1 
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
 
 -- name: UpdateUserRole :one
 UPDATE users

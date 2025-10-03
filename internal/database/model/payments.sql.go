@@ -99,10 +99,17 @@ func (q *Queries) GetPaymentByID(ctx context.Context, id uuid.UUID) (Payment, er
 
 const listPaymentsByInvoice = `-- name: ListPaymentsByInvoice :many
 SELECT id, tenant_id, invoice_id, amount_cents, currency, provider, status, transaction_ref, created_at FROM payments WHERE invoice_id = $1 ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) ListPaymentsByInvoice(ctx context.Context, invoiceID uuid.UUID) ([]Payment, error) {
-	rows, err := q.db.QueryContext(ctx, listPaymentsByInvoice, invoiceID)
+type ListPaymentsByInvoiceParams struct {
+	InvoiceID uuid.UUID `json:"invoice_id"`
+	Limit     int32     `json:"limit"`
+	Offset    int32     `json:"offset"`
+}
+
+func (q *Queries) ListPaymentsByInvoice(ctx context.Context, arg ListPaymentsByInvoiceParams) ([]Payment, error) {
+	rows, err := q.db.QueryContext(ctx, listPaymentsByInvoice, arg.InvoiceID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

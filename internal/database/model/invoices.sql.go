@@ -94,10 +94,17 @@ func (q *Queries) GetInvoiceByID(ctx context.Context, id uuid.UUID) (Invoice, er
 
 const listInvoicesByTenant = `-- name: ListInvoicesByTenant :many
 SELECT id, tenant_id, user_id, customer_email, amount_cents, currency, status, issued_at, due_at FROM invoices WHERE tenant_id = $1 ORDER BY issued_at DESC
+LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) ListInvoicesByTenant(ctx context.Context, tenantID uuid.UUID) ([]Invoice, error) {
-	rows, err := q.db.QueryContext(ctx, listInvoicesByTenant, tenantID)
+type ListInvoicesByTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+func (q *Queries) ListInvoicesByTenant(ctx context.Context, arg ListInvoicesByTenantParams) ([]Invoice, error) {
+	rows, err := q.db.QueryContext(ctx, listInvoicesByTenant, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

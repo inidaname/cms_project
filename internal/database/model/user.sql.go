@@ -105,11 +105,20 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const listUsersByTenant = `-- name: ListUsersByTenant :many
-SELECT id, tenant_id, email, password_hash, role, created_at FROM users WHERE tenant_id = $1 ORDER BY created_at DESC
+SELECT id, tenant_id, email, password_hash, role, created_at FROM users 
+WHERE tenant_id = $1 
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) ListUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersByTenant, tenantID)
+type ListUsersByTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+func (q *Queries) ListUsersByTenant(ctx context.Context, arg ListUsersByTenantParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersByTenant, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

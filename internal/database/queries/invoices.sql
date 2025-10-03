@@ -7,7 +7,8 @@ RETURNING *;
 SELECT * FROM invoices WHERE id = $1 LIMIT 1;
 
 -- name: ListInvoicesByTenant :many
-SELECT * FROM invoices WHERE tenant_id = $1 ORDER BY issued_at DESC;
+SELECT * FROM invoices WHERE tenant_id = $1 ORDER BY issued_at DESC
+LIMIT $2 OFFSET $3;
 
 -- name: UpdateInvoiceStatus :one
 UPDATE invoices
