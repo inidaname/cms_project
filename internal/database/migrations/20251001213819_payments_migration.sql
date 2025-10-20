@@ -5,9 +5,9 @@ CREATE TABLE payments (
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
     amount_cents INT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'USD',
-    provider TEXT NOT NULL, -- e.g. stripe, paystack
-    status TEXT NOT NULL DEFAULT 'processing', -- processing, success, failed
+    currency TEXT NOT NULL DEFAULT 'NGN',
+    provider TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'processing',
     transaction_ref TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

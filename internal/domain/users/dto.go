@@ -1,6 +1,7 @@
 package users
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,12 @@ import (
 type RegisterDTO struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	Role     string    `json:"role"`
+}
+
+type UpdateDTO struct {
+	UserID   uuid.UUID `json:"user_id"`
 	Password string    `json:"password"`
 	Role     string    `json:"role"`
 }
@@ -28,6 +35,14 @@ func (dto RegisterDTO) ToParams() model.CreateUserParams {
 		Email:        dto.Email,
 		PasswordHash: dto.Password,
 		Role:         dto.Role,
+	}
+}
+
+func (dto UpdateDTO) ToParams() model.UpdateUserDetailParams {
+	return model.UpdateUserDetailParams{
+		PasswordHash: sql.NullString{String: dto.Password, Valid: dto.Password != ""},
+		Role:         sql.NullString{String: dto.Role, Valid: dto.Role != ""},
+		ID:           dto.UserID,
 	}
 }
 

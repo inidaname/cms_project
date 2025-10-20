@@ -13,6 +13,7 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (users.User, error)
 	GetByEmail(ctx context.Context, args model.GetUserByEmailParams) (users.User, error)
 	List(ctx context.Context, arg model.ListUsersByTenantParams) ([]users.User, error)
+	Update(ctx context.Context, arg model.UpdateUserDetailParams) (users.User, error)
 }
 
 type userRepository struct {
@@ -79,4 +80,14 @@ func (r *userRepository) List(ctx context.Context, arg model.ListUsersByTenantPa
 	}
 
 	return users.ListFromModel(dbUsers), nil
+}
+
+func (r *userRepository) Update(ctx context.Context, arg model.UpdateUserDetailParams) (users.User, error) {
+	dbUser, err := r.q.UpdateUserDetail(ctx, arg)
+
+	if err != nil {
+		return users.User{}, err
+	}
+
+	return users.FromModel(dbUser), nil
 }

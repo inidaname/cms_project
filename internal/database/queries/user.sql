@@ -15,14 +15,15 @@ WHERE tenant_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
--- name: UpdateUserRole :one
-UPDATE users
-SET role = $2
-WHERE id = $1
-RETURNING *;
-
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1;
 
 -- name: CountTenantUsers :one
 SELECT COUNT(*) FROM users WHERE tenant_id = $1;
+
+-- name: UpdateUserDetail :one
+UPDATE users
+SET password_hash = COALESCE(sqlc.narg('password_hash'), password_hash),
+    role = COALESCE(sqlc.narg('role'), role)
+WHERE id = sqlc.arg('id')
+RETURNING *;

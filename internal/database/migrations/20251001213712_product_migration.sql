@@ -6,7 +6,7 @@ CREATE TABLE products (
     name TEXT NOT NULL,
     description TEXT,
     price_cents INT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'USD',
+    currency TEXT NOT NULL DEFAULT 'NGN',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 -- +goose StatementEnd

@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -147,20 +148,22 @@ func (q *Queries) ListUsersByTenant(ctx context.Context, arg ListUsersByTenantPa
 	return items, nil
 }
 
-const updateUserRole = `-- name: UpdateUserRole :one
+const updateUserDetail = `-- name: UpdateUserDetail :one
 UPDATE users
-SET role = $2
-WHERE id = $1
+SET password_hash = COALESCE($1, password_hash),
+    role = COALESCE($2, role)
+WHERE id = $3
 RETURNING id, tenant_id, email, password_hash, role, created_at
 `
 
-type UpdateUserRoleParams struct {
-	ID   uuid.UUID `json:"id"`
-	Role string    `json:"role"`
+type UpdateUserDetailParams struct {
+	PasswordHash sql.NullString `json:"password_hash"`
+	Role         sql.NullString `json:"role"`
+	ID           uuid.UUID      `json:"id"`
 }
 
-func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserRole, arg.ID, arg.Role)
+func (q *Queries) UpdateUserDetail(ctx context.Context, arg UpdateUserDetailParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserDetail, arg.PasswordHash, arg.Role, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,

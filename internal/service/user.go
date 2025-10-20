@@ -36,3 +36,12 @@ func (s *userService) GetProfile(ctx context.Context, id uuid.UUID) (users.UserR
 	}
 	return users.ToResponse(user), nil
 }
+
+func (s *userService) UpdateProfile(ctx context.Context, dto users.UpdateDTO) (users.UserResponse, error) {
+	user, err := s.repo.Update(ctx, dto.ToParams())
+	if err != nil {
+		return users.UserResponse{}, err
+	}
+
+	return users.ToResponse(user), nil
+}

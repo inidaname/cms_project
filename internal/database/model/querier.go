@@ -51,7 +51,7 @@ type Querier interface {
 	UpdateInvoiceStatus(ctx context.Context, arg UpdateInvoiceStatusParams) (Invoice, error)
 	UpdatePaymentStatus(ctx context.Context, arg UpdatePaymentStatusParams) (Payment, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
-	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error)
+	UpdateUserDetail(ctx context.Context, arg UpdateUserDetailParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

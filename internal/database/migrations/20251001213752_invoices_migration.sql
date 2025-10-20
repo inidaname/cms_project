@@ -6,7 +6,7 @@ CREATE TABLE invoices (
     user_id UUID REFERENCES users(id),
     customer_email TEXT NOT NULL,
     amount_cents INT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'USD',
+    currency TEXT NOT NULL DEFAULT 'NGN',
     status TEXT NOT NULL DEFAULT 'pending', -- pending, paid, failed
     issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     due_at TIMESTAMPTZ
