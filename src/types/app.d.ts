@@ -6,9 +6,7 @@ interface AppOptions
 
 type PluginType = import("fastify").FastifyPluginAsync<AppOptions>;
 
-type PrismaClientType = import("@prisma/client").PrismaClient<{
-  omit: { user: { password: true } };
-}>;
+type PrismaClientType = import("../generated/prisma/index").PrismaClient;
 type FastifyRedis = import("@fastify/redis").FastifyRedis;
 
 interface NodemailerPluginOptions {
@@ -30,3 +28,5 @@ declare module "@scalar/fastify-api-reference";
 type ValidationPlugin = <T extends Record<string, any>>(
   schema: (keyof T)[],
 ) => MiddleHandler<T>;
+
+type InputType<T> = Omit<T, "createdAt" | "updatedAt" | "id">;
