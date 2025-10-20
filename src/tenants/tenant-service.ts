@@ -2,14 +2,12 @@ import { Prisma } from "../generated/prisma";
 import { createPagination } from "../utils/pagination";
 
 export class TenantService {
-  tenant;
   prisma;
   constructor(prisma: PrismaClientType) {
-    this.tenant = prisma.tenant;
     this.prisma = prisma;
   }
 
-  async getAllTenants(filter?: string, page = 1, limit = 10) {
+  async getAllTenants(page = 1, limit = 10, filter?: string) {
     const whereClause: Prisma.TenantWhereInput = filter
       ? {
         OR: [
@@ -23,14 +21,14 @@ export class TenantService {
     const skip = (page - 1) * limit;
 
     const [data, total] = await this.prisma.$transaction([
-      this.tenant.findMany({
+      this.prisma.tenant.findMany({
         where: whereClause,
         include: { _count: true },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
       }),
-      this.tenant.count({ where: whereClause }),
+      this.prisma.tenant.count({ where: whereClause }),
     ]);
 
     return {
@@ -49,19 +47,22 @@ export class TenantService {
         ],
       }
       : {};
-    return await this.tenant.count({ where });
+    return await this.prisma.tenant.count({ where });
   }
 
   async getTenantById(id: string) {
-    return await this.tenant.findUnique({ where: { id } });
+    return await this.prisma.tenant.findUnique({ where: { id } });
   }
 
   async createTenant(data: TenantInput) {
-    return await this.tenant.create({ data, include: { TenantUser: true } });
+    return await this.prisma.tenant.create({
+      data,
+      include: { TenantUser: true },
+    });
   }
 
   async editTenant(id: string, data: TenantInput) {
-    return await this.tenant.update({
+    return await this.prisma.tenant.update({
       where: { id },
       data,
       include: { _count: true },
@@ -69,6 +70,6 @@ export class TenantService {
   }
 
   async deleteTenant(id: string) {
-    return await this.tenant.delete({ where: { id } });
+    return await this.prisma.tenant.delete({ where: { id } });
   }
 }
