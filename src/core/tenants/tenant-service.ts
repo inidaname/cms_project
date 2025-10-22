@@ -1,5 +1,5 @@
-import { Prisma } from "../generated/prisma";
-import { createPagination } from "../utils/pagination";
+import { Prisma } from "../../generated/prisma";
+import { createPagination } from "../../utils/pagination";
 
 export class TenantService {
   prisma;
