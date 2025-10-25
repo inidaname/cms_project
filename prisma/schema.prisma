@@ -9,33 +9,60 @@ datasource db {
 }
 
 model Tenant {
-  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String
-  domain    String       @unique
-  apiKey    String       @unique
-  status    TenantStatus @default(ACTIVE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  users     User[]
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  domain        String          @unique
+  apiKey        String          @unique
+  status        TenantStatus    @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  users         User[]
+  PasswordToken PasswordToken[]
 
   @@index([name, domain])
 }
 
 model User {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id String   @db.Uuid
-  tenant    Tenant   @relation(fields: [tenant_id], references: [id])
-  email     String
-  name      String?
-  password  String
-  phone     String?
-  role      Role     @default(USER)
-  agreed    Boolean? @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String          @db.Uuid
+  tenant        Tenant          @relation(fields: [tenant_id], references: [id])
+  email         String
+  name          String?
+  password      String
+  phone         String?
+  role          Role            @default(USER)
+  agreed        Boolean?        @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  PasswordToken PasswordToken[]
+  RefreshToken  RefreshToken[]
 
   @@unique([tenant_id, email]) // one email per tenant
   @@index([email, phone])
+}
+
+model PasswordToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenHash String   @unique
+  user_id   String   @db.Uuid
+  user      User     @relation(fields: [user_id], references: [id])
+  tenant_id String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenant_id], references: [id])
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([tenant_id, user_id])
+}
+
+model RefreshToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  revoked   Boolean? @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 enum Role {

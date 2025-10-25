@@ -1,7 +1,6 @@
 import fp from "fastify-plugin";
-import { FastifyPluginAsync } from "fastify";
 
-const tenantResolver: FastifyPluginAsync = fp(async (fastify) => {
+const tenantResolver: PluginType = async (fastify) => {
   fastify.decorateRequest("tenant", null);
 
   fastify.addHook("preHandler", async (req, reply) => {
@@ -21,6 +20,6 @@ const tenantResolver: FastifyPluginAsync = fp(async (fastify) => {
 
     req.tenant = tenant;
   });
-});
+};
 
-export default tenantResolver;
+export default fp(tenantResolver);

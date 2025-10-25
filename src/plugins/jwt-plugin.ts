@@ -7,6 +7,13 @@ const jwtPlugin = fp(async (fastify, options) => {
   const JWT_SECRET = process.env.JWT_SECRET || "JWT_SECRET";
   fastify.register(fastifyJwt, {
     secret: JWT_SECRET, // @TODO: Update to use $public and $private key
+    sign: {
+      expiresIn: "15m",
+    },
+    cookie: {
+      cookieName: "refreshToken",
+      signed: false,
+    },
   });
 
   fastify.decorate("authenticate", async (request, reply) => {
