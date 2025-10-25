@@ -6,6 +6,9 @@ type FastifyJWT = import("@fastify/jwt").FastifyJwtNamespace<{
   jwtVerify: "securityJwtVerify";
 }>;
 declare module "fastify" {
+  interface FastifyRequest {
+    tenant: import("@prisma/client").Tenant | null;
+  }
   interface FastifyInstance extends FastifyJWT {
     prisma: PrismaClientType;
     authenticate: (

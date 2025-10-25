@@ -1,12 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -15,40 +9,45 @@ datasource db {
 }
 
 model Tenant {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String
-  domain     String       @unique
-  status     String // expired, deleted, outdate, abandoned, active
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  TenantUser TenantUser[]
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  domain    String       @unique
+  apiKey    String       @unique
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  users     User[]
 
   @@index([name, domain])
 }
 
 model User {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email      String
-  name       String?
-  password   String
-  phone      String?
-  agreed     Boolean?     @default(false)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  TenantUser TenantUser[]
-
-  @@index([email, phone])
-}
-
-model TenantUser {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenant_id String   @db.Uuid
-  Tenant    Tenant   @relation(fields: [tenant_id], references: [id])
-  user_id   String   @db.Uuid
-  User      User     @relation(fields: [user_id], references: [id])
-  role      String //User, Admin, Owner
+  tenant    Tenant   @relation(fields: [tenant_id], references: [id])
+  email     String
+  name      String?
+  password  String
+  phone     String?
+  role      Role     @default(USER)
+  agreed    Boolean? @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([tenant_id, user_id])
+  @@unique([tenant_id, email]) // one email per tenant
+  @@index([email, phone])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  USER
+}
+
+enum TenantStatus {
+  ACTIVE
+  EXPIRED
+  DELETED
+  OUTDATED
+  ABANDONED
 }

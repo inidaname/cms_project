@@ -1,4 +1,4 @@
-import { Prisma } from "../../generated/prisma";
+import { Prisma } from "@prisma/client";
 import { createPagination } from "../../utils/pagination";
 
 export class UserService {
@@ -12,7 +12,7 @@ export class UserService {
     return await this.prisma.user.create({ data });
   }
 
-  async getAllUsers(page = 1, limit = 10, filter?: string) {
+  async getAllUsers(page = 1, limit = 10, filter?: string, tenant_id?: string) {
     const whereClause: Prisma.UserWhereInput = filter
       ? {
         OR: [
@@ -20,6 +20,7 @@ export class UserService {
           { name: { contains: filter, mode: "insensitive" } },
           { phone: { contains: filter, mode: "insensitive" } },
         ],
+        tenant_id,
       }
       : {};
 
@@ -28,7 +29,7 @@ export class UserService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         where: whereClause,
-        include: { _count: true },
+        include: { tenant: true },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -50,7 +51,19 @@ export class UserService {
     return await this.prisma.user.update({ where: { id }, data });
   }
 
-  async countTenants(filter?: string) {
+  async getUserByEmailOrPhone(filter: string, tenant_id: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: filter },
+          { phone: filter },
+        ],
+        tenant_id,
+      },
+    });
+  }
+
+  async countTenantsUsers(tenant_id: string, filter?: string) {
     const where: Prisma.UserWhereInput = filter
       ? {
         OR: [
@@ -58,6 +71,7 @@ export class UserService {
           { name: { contains: filter, mode: "insensitive" } },
           { phone: { contains: filter, mode: "insensitive" } },
         ],
+        tenant_id,
       }
       : {};
     return await this.prisma.user.count({ where });

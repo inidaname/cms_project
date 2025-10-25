@@ -6,7 +6,7 @@ interface AppOptions
 
 type PluginType = import("fastify").FastifyPluginAsync<AppOptions>;
 
-type PrismaClientType = import("../generated/prisma/index").PrismaClient;
+type PrismaClientType = import("@prisma/client").PrismaClient;
 type FastifyRedis = import("@fastify/redis").FastifyRedis;
 
 interface NodemailerPluginOptions {

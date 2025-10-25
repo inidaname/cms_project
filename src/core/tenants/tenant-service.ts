@@ -1,4 +1,4 @@
-import { Prisma } from "../../generated/prisma";
+import { $Enums, Prisma } from "@prisma/client";
 import { createPagination } from "../../utils/pagination";
 
 export class TenantService {
@@ -7,14 +7,19 @@ export class TenantService {
     this.prisma = prisma;
   }
 
-  async getAllTenants(page = 1, limit = 10, filter?: string) {
+  async getAllTenants(
+    page = 1,
+    limit = 10,
+    filter?: string,
+    status?: $Enums.TenantStatus,
+  ) {
     const whereClause: Prisma.TenantWhereInput = filter
       ? {
         OR: [
           { domain: { contains: filter, mode: "insensitive" } },
           { name: { contains: filter, mode: "insensitive" } },
-          { status: { contains: filter, mode: "insensitive" } },
         ],
+        status,
       }
       : {};
 
@@ -37,14 +42,14 @@ export class TenantService {
     };
   }
 
-  async countTenants(filter?: string) {
+  async countTenants(filter?: string, status?: $Enums.TenantStatus) {
     const where: Prisma.TenantWhereInput = filter
       ? {
         OR: [
           { domain: { contains: filter, mode: "insensitive" } },
           { name: { contains: filter, mode: "insensitive" } },
-          { status: { contains: filter, mode: "insensitive" } },
         ],
+        status,
       }
       : {};
     return await this.prisma.tenant.count({ where });
@@ -57,7 +62,7 @@ export class TenantService {
   async createTenant(data: TenantInput) {
     return await this.prisma.tenant.create({
       data,
-      include: { TenantUser: true },
+      include: { users: true },
     });
   }
 

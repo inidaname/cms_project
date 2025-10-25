@@ -1,8 +1,8 @@
-import fp from "fastify-plugin";
 import { PrismaClient } from "@prisma/client";
+import fp from "fastify-plugin";
 
 const prismaPlugin: PluginType = async (server, options) => {
-  const prisma = new PrismaClient({ omit: { user: { password: true } } });
+  const prisma = new PrismaClient();
   await prisma.$connect();
   server.decorate("prisma", prisma);
 

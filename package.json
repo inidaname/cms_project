@@ -32,18 +32,21 @@
     "@fastify/sensible": "^6.0.0",
     "@fastify/swagger": "^9.5.2",
     "@fastify/swagger-ui": "^5.2.3",
-    "@prisma/client": "^6.17.1",
+    "@prisma/client": "^6.18.0",
+    "bcrypt": "^6.0.0",
     "fastify": "^5.0.0",
     "fastify-cli": "^7.4.0",
     "fastify-plugin": "^5.0.0",
+    "status-code-enum": "^1.0.0",
     "swagger-jsdoc": "^6.2.8"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.1.0",
     "c8": "^10.1.2",
     "concurrently": "^9.0.0",
     "fastify-tsconfig": "^3.0.0",
-    "prisma": "^6.17.1",
+    "prisma": "^6.18.0",
     "ts-node": "^10.4.0",
     "typescript": "~5.8.2"
   }

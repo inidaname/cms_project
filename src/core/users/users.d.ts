@@ -1,1 +1,1 @@
-type UserInput = InputType<import("../../generated/prisma").User>;
+type UserInput = InputType<import("@prisma/client").User>;

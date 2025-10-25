@@ -1,1 +1,1 @@
-type TenantInput = InputType<import("../../generated/prisma").Tenant>;
+type TenantInput = InputType<import("@prisma/client").Tenant>;
