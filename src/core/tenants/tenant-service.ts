@@ -66,7 +66,7 @@ export class TenantService {
     });
   }
 
-  async editTenant(id: string, data: TenantInput) {
+  async editTenant(id: string, data: Partial<TenantInput>) {
     return await this.prisma.tenant.update({
       where: { id },
       data,
