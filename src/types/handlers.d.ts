@@ -35,7 +35,9 @@ interface CusReq<T, P, Q, R> extends RouteGenericInterface {
   Body: T;
   Params: P;
   Querystring: Q;
-  Reply: (ReturnHandler<R> | AuthData) & (CASError | CASSuccess);
+  Reply:
+    & (ReturnHandler<R> | AuthData | PaginatedData)
+    & (CASError | CASSuccess);
   User?: any;
 }
 
@@ -53,6 +55,21 @@ interface ReturnData {
 interface ReturnHandler<T = {}> extends ReturnData {
   data: T | null;
 }
+
+interface PaginatedData<T = {}> extends ReturnData {
+  data: {
+    data: T[];
+    metadata: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
+
 interface AuthData extends ReturnData {
   token: string;
 }

@@ -43,8 +43,8 @@ export class UserService {
     };
   }
 
-  async getUserById(id: string) {
-    return await this.prisma.user.findUnique({ where: { id } });
+  async getUserById(id: string, tenant_id: string) {
+    return await this.prisma.user.findUnique({ where: { id, tenant_id } });
   }
 
   async updateUser(data: Omit<UserInput, "agreed">, id: string) {
@@ -77,7 +77,7 @@ export class UserService {
     return await this.prisma.user.count({ where });
   }
 
-  async deleteUser(id: string) {
-    return await this.prisma.user.delete({ where: { id } });
+  async deleteUser(id: string, tenant_id: string) {
+    return await this.prisma.user.delete({ where: { id, tenant_id } });
   }
 }

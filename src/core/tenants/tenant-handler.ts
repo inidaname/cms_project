@@ -1,4 +1,3 @@
-import { FastifyInstance } from "fastify";
 import { TenantService } from "./tenant-service";
 import { generateApiKey } from "../../helpers/generate_apikey";
 import { UserService } from "../users/user-service";
@@ -10,7 +9,7 @@ import {
   CASSuccessMessage,
 } from "../../utils/enums";
 
-export const tenantHandler: TenantHandler = (app: FastifyInstance) => {
+export const tenantHandler: TenantHandler = (app) => {
   const service = new TenantService(app.prisma);
   const userService = new UserService(app.prisma);
 
@@ -30,7 +29,7 @@ export const tenantHandler: TenantHandler = (app: FastifyInstance) => {
       const { id: tenant_id } = request.tenant!;
       const { id } = request.user;
 
-      const user = await userService.getUserById(id);
+      const user = await userService.getUserById(id, tenant_id);
 
       if (!user || user.tenant_id !== tenant_id || user.role === "USER") {
         throw {
@@ -52,7 +51,7 @@ export const tenantHandler: TenantHandler = (app: FastifyInstance) => {
     },
     registerTenant: async (request, reply) => {
       const body = request.body;
-      const { apiKey } = request.tenant!;
+      const { apiKey, id: tenant_id } = request.tenant!;
       if (apiKey !== process.env.MASTER_APIKEY) {
         throw {
           message: "",
@@ -61,7 +60,7 @@ export const tenantHandler: TenantHandler = (app: FastifyInstance) => {
       }
 
       const { id } = request.user;
-      const user = await userService.getUserById(id);
+      const user = await userService.getUserById(id, tenant_id);
 
       if (!user) {
         throw {};
