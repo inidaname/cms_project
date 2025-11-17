@@ -18,6 +18,11 @@ model Tenant {
   updatedAt     DateTime        @updatedAt
   users         User[]
   PasswordToken PasswordToken[]
+  products      Product[]
+  sales         Sales[]
+  carts         Cart[]
+  discounts     Discount[]
+  revenue       Payments[]
 
   @@index([name, domain])
 }
@@ -36,8 +41,11 @@ model User {
   updatedAt     DateTime        @updatedAt
   PasswordToken PasswordToken[]
   RefreshToken  RefreshToken[]
+  carts         Cart[]
+  purchases     Sales[]
+  payments      Payments[]
 
-  @@unique([tenant_id, email]) // one email per tenant
+  @@unique([tenant_id, email])
   @@index([email, phone])
 }
 
@@ -55,6 +63,86 @@ model PasswordToken {
   @@unique([tenant_id, user_id])
 }
 
+model Product {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title             String
+  description       String             @db.Text
+  owner             Tenant             @relation(fields: [tenant_id], references: [id])
+  tenant_id         String             @db.Uuid
+  attributes        Json               @db.Json
+  quantity          Float?             @default(0) @db.Real
+  price             Float              @default(0.00) @db.DoublePrecision
+  variation         Boolean?           @default(false)
+  productVariations ProductVariation[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  cartItems         CartItems[]
+
+  @@unique([tenant_id, title])
+  @@index([title])
+}
+
+enum VariationTypes {
+  Color
+  Size
+  Others
+}
+
+model ProductVariation {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product    Product        @relation(fields: [product_id], references: [id])
+  product_id String         @db.Uuid
+  type       VariationTypes
+  value      String
+  quantity   Float?         @default(0) @db.Real
+  price      Float          @default(0.00) @db.DoublePrecision
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+model Discount {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title      String
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id])
+  tenant_id  String   @db.Uuid
+  percentage Float    @default(0.00) @db.DoublePrecision
+  active     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model CartItems {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  items            Product  @relation(fields: [product_id], references: [id])
+  product_id       String   @db.Uuid
+  cart             Cart     @relation(fields: [cart_id], references: [id])
+  cart_id          String   @db.Uuid
+  product_quantity Float    @default(0) @db.Real
+  value            Float    @default(0.00) @db.DoublePrecision
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+enum CartStatus {
+  Active
+  Abandoned
+  CHeckout
+}
+
+model Cart {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customer   User        @relation(fields: [user_id], references: [id])
+  user_id    String      @db.Uuid
+  tenant     Tenant      @relation(fields: [tenant_id], references: [id])
+  tenant_id  String      @db.Uuid
+  cartItems  CartItems[]
+  totalValue Float       @default(0.00) @db.DoublePrecision
+  status     CartStatus? @default(Active)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  sales      Sales?
+}
+
 model RefreshToken {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   token     String   @unique
@@ -63,6 +151,57 @@ model RefreshToken {
   revoked   Boolean? @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+enum SalesStatus {
+  Delivered
+  Paid
+  Returned
+  Cancelled
+}
+
+model Sales {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cart      Cart         @relation(fields: [cart_id], references: [id])
+  cart_id   String       @unique @db.Uuid
+  amount    Float        @default(0.00) @db.DoublePrecision
+  status    SalesStatus? @default(Paid)
+  tenant    Tenant       @relation(fields: [tenant_id], references: [id])
+  tenant_id String       @db.Uuid
+  paidBy    User         @relation(fields: [user_id], references: [id])
+  user_id   String       @db.Uuid
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  payments  Payments?
+}
+
+enum PaymentChannels {
+  Card
+  Transfer
+  Cash
+  Other
+}
+
+enum PaymentStatus {
+  Success
+  Failed
+  Pending
+}
+
+model Payments {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  channel   PaymentChannels?
+  amount    Float            @default(0.00) @db.DoublePrecision
+  status    PaymentStatus?
+  reference String?
+  paidBy    User             @relation(fields: [user_id], references: [id])
+  user_id   String           @db.Uuid
+  paidTo    Tenant           @relation(fields: [tenant_id], references: [id])
+  tenant_id String           @db.Uuid
+  paidFor   Sales            @relation(fields: [sales_id], references: [id])
+  sales_id  String           @unique @db.Uuid
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 }
 
 enum Role {
