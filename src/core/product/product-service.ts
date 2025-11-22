@@ -46,6 +46,12 @@ export class ProductService {
     });
   }
 
+  async isTenantProduct(tenant_id: string, product_id: string) {
+    return !!(await this.prisma.product.findFirst({
+      where: { id: product_id, tenant_id },
+    }));
+  }
+
   async getAllTenantProducts(
     tenant_id: string,
     page = 1,
@@ -125,10 +131,12 @@ export class ProductService {
   }
 
   async removeProduct(id: string) {
-    return await this.prisma.$transaction([
+    const [product] = await this.prisma.$transaction([
       this.prisma.product.delete({ where: { id } }),
       this.prisma.productVariation.deleteMany({ where: { product_id: id } }),
     ]);
+
+    return product;
   }
 
   async removeVariation(id: string) {
