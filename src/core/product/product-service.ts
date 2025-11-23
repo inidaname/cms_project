@@ -1,4 +1,4 @@
-import { $Enums, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { createPagination } from "../../utils/pagination";
 
 export class ProductService {

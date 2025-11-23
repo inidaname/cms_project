@@ -63,6 +63,12 @@ model PasswordToken {
   @@unique([tenant_id, user_id])
 }
 
+enum ProductStatus {
+  Available
+  OutOfStock
+  Discontinued
+}
+
 model Product {
   id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title             String
@@ -73,10 +79,11 @@ model Product {
   quantity          Float?             @default(0) @db.Real
   price             Float              @default(0.00) @db.DoublePrecision
   variation         Boolean?           @default(false)
+  status            ProductStatus?     @default(Available)
   productVariations ProductVariation[]
+  cartItems         CartItems[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
-  cartItems         CartItems[]
 
   @@unique([tenant_id, title])
   @@index([title])
@@ -98,6 +105,7 @@ model ProductVariation {
   price      Float          @default(0.00) @db.DoublePrecision
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+  cartItems  CartItems[]
 }
 
 model Discount {
@@ -112,21 +120,26 @@ model Discount {
 }
 
 model CartItems {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  items            Product  @relation(fields: [product_id], references: [id])
-  product_id       String   @db.Uuid
-  cart             Cart     @relation(fields: [cart_id], references: [id])
-  cart_id          String   @db.Uuid
-  product_quantity Float    @default(0) @db.Real
-  value            Float    @default(0.00) @db.DoublePrecision
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  items            Product           @relation(fields: [product_id], references: [id])
+  product_id       String            @db.Uuid
+  cart             Cart              @relation(fields: [cart_id], references: [id])
+  cart_id          String            @db.Uuid
+  product_quantity Float             @default(0) @db.Real
+  value            Float             @default(0.00) @db.DoublePrecision
+  unit_price       Float             @default(0.00) @db.DoublePrecision
+  variation        ProductVariation? @relation(fields: [variation_id], references: [id])
+  variation_id     String?           @db.Uuid
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([cart_id])
 }
 
 enum CartStatus {
   Active
   Abandoned
-  CHeckout
+  Checkedout
 }
 
 model Cart {
@@ -141,6 +154,8 @@ model Cart {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   sales      Sales?
+
+  @@index([user_id, tenant_id])
 }
 
 model RefreshToken {
