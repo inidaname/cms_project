@@ -6,7 +6,7 @@ interface LoginType {
 type PasswdTokenInput = InputType<import("@prisma/client").PasswordToken>;
 type RefreshTokenInput = InputType<import("@prisma/client").RefreshToken>;
 
-type Authhandler = (app: import("fastify").FastifyInstance) => {
+type Authhandler = (app: FastifyInstance) => {
   login: Handler<
     LoginType,
     import("@prisma/client").User

@@ -18,17 +18,21 @@ export class CartService {
     });
   }
 
-  async createCart(data: CartsInput) {
+  async createCart(data: Omit<CartsInput, "status">) {
     return await this.getActiveCart(data.user_id, data.tenant_id) ||
       await this.prisma.cart.create({ data });
   }
 
   async editCart(
     id: string,
+    user_id: string,
     tenant_id: string,
     data: Pick<Partial<CartsInput>, "status" | "totalValue">,
   ) {
-    return await this.prisma.cart.update({ where: { id, tenant_id }, data });
+    return await this.prisma.cart.update({
+      where: { id, tenant_id, user_id },
+      data,
+    });
   }
 
   async getCarts(
@@ -65,7 +69,13 @@ export class CartService {
   async getCartById(id: string, tenant_id: string) {
     return await this.prisma.cart.findUnique({
       where: { id, tenant_id },
-      include: { _count: true, cartItems: true },
+      include: {
+        _count: true,
+        cartItems: true,
+        customer: true,
+        sales: true,
+        tenant: true,
+      },
     });
   }
 
@@ -83,7 +93,8 @@ export class CartService {
   async addItemToCart(
     user_id: string,
     tenant_id: string,
-    data: Omit<CartItemsInput, "cart_id">[],
+    data: Omit<CartItemsInput, "cart_id" | "value">[],
+    cart_id?: string,
   ) {
     const itemsWithComputedValue = data.map((item) => ({
       ...item,
@@ -94,12 +105,19 @@ export class CartService {
       (sum, item) => sum + item.value,
       0,
     );
-    const cart = await this.createCart({
-      status: "Active",
-      tenant_id,
-      user_id,
-      totalValue,
-    });
+    let existingCart;
+
+    if (cart_id) {
+      existingCart = await this.getCartById(cart_id, tenant_id);
+    }
+
+    const cart = !existingCart || existingCart.status !== "Active"
+      ? await this.createCart({
+        tenant_id,
+        user_id,
+        totalValue,
+      })
+      : existingCart;
 
     return await this.prisma.cart.update({
       where: { id: cart.id },
@@ -108,6 +126,13 @@ export class CartService {
           ? { increment: totalValue }
           : totalValue,
         cartItems: { create: data },
+      },
+      include: {
+        _count: true,
+        cartItems: true,
+        sales: true,
+        customer: true,
+        tenant: true,
       },
     });
   }
@@ -131,7 +156,7 @@ export class CartService {
     const item = await this.getItemById(id);
 
     if (!item) {
-      return;
+      throw {};
     }
 
     const newCartTotal = item.cart.totalValue - item.value;
@@ -167,17 +192,17 @@ export class CartService {
       return;
     }
 
-    return await this.prisma.cart.update({
-      where: {
-        id: item.cart_id,
-        user_id,
-        tenant_id,
-        status: { not: "Checkedout" },
-      },
-      data: {
-        cartItems: { delete: { id: itemId } },
-        totalValue: { decrement: item.value },
-      },
-    });
+    const [_, deletedItem] = await this.prisma.$transaction([
+      this.prisma.cartItems.update({
+        where: {
+          id: itemId,
+          cart: { user_id, tenant_id, status: { not: "Checkedout" } },
+        },
+        data: { cart: { update: { totalValue: { decrement: item.value } } } },
+      }),
+      this.prisma.cartItems.delete({ where: { id: itemId } }),
+    ]);
+
+    return deletedItem;
   }
 }

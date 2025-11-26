@@ -2,7 +2,6 @@ type Product = InputType<import("@prisma/client").Product>;
 type ProductVariation = InputType<import("@prisma/client").ProductVariation>;
 type ProductInput = InputType<Product>;
 type VariationInput = InputType<ProductVariation>;
-type FastifyInstance = import("fastify").FastifyInstance;
 
 type Producthanlder = (app: FastifyInstance) => {
   createProduct: Handler<
