@@ -137,9 +137,9 @@ export class CartService {
     });
   }
 
-  async getItemById(id: string) {
+  async getItemById(id: string, tenant_id: string, user_id?: string) {
     return await this.prisma.cartItems.findUnique({
-      where: { id },
+      where: { id, cart: { tenant_id, user_id } },
       include: { items: true, variation: true, cart: true },
     });
   }
@@ -153,7 +153,7 @@ export class CartService {
     if (quantity === 0) {
       return await this.removeItemsFromCart(user_id, tenant_id, id);
     }
-    const item = await this.getItemById(id);
+    const item = await this.getItemById(id, tenant_id, user_id);
 
     if (!item) {
       throw {};
@@ -186,7 +186,7 @@ export class CartService {
     tenant_id: string,
     itemId: string,
   ) {
-    const item = await this.getItemById(itemId);
+    const item = await this.getItemById(itemId, tenant_id, user_id);
 
     if (!item) {
       return;

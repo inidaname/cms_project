@@ -13,9 +13,9 @@ type Producthanlder = (app: FastifyInstance) => {
     Product,
     { product_id: string }
   >;
-  getTenantProducts: Handler<
+  getTenantProducts: PaginatedHandler<
     void,
-    Product[],
+    Product,
     void,
     { page?: number; limit?: number; filter?: string }
   >;

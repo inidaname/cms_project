@@ -15,11 +15,15 @@ type CartsHandler = (app: FastifyInstance) => {
   getCartById: Handler<void, Cart, { cart_id?: string }>; // cart_id is optional so it will get active cart
   editCartById: Handler<{ status: CartStatus }, Cart, { cart_id?: string }>; // cart_id is optional so it will edit active cart
   deleteCart: Handler<void, Cart, { cart_id: string }>;
-  getCarts: Handler<
+  getCarts: PaginatedHandler<
     void,
-    Cart[],
+    Cart,
     void,
-    { page?: number; limit?: number; filter?: string }
+    {
+      page?: number;
+      limit?: number;
+      filter?: import("@prisma/client").$Enums.CartStatus;
+    }
   >;
   getItmeById: Handler<void, CartItems, { item_id: string }>;
   editItemQuantity: Handler<

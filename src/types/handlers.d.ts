@@ -19,6 +19,18 @@ type Handler<
   CusReq<T, P, Q, R>
 >;
 
+type PaginatedHandler<
+  T = {},
+  R = {},
+  P = {},
+  Q = {},
+> = import("fastify").RouteHandlerMethod<
+  RawServerDefault,
+  RawRequestDefaultExpression,
+  RawReplyDefaultExpression,
+  PginatedCusReq<T, P, Q, R>
+>;
+
 type MiddleHandler<
   T = {},
   R = {},
@@ -36,7 +48,17 @@ interface CusReq<T, P, Q, R> extends RouteGenericInterface {
   Params: P;
   Querystring: Q;
   Reply:
-    & (ReturnHandler<R> | AuthData | PaginatedData)
+    & (ReturnHandler<R> | AuthData | PaginatedData<R>)
+    & (CASError | CASSuccess);
+  User?: any;
+}
+
+interface PginatedCusReq<T, P, Q, R> extends RouteGenericInterface {
+  Body: T;
+  Params: P;
+  Querystring: Q;
+  Reply:
+    & PaginatedData<R>
     & (CASError | CASSuccess);
   User?: any;
 }

@@ -151,10 +151,56 @@ export const cartsHandler: CartsHandler = (app) => {
       });
     },
     getCarts: async (request, reply) => {
+      if (!request.tenant) {
+        throw {};
+      }
+      const {
+        query: { filter, limit, page },
+        tenant: { id: tenant_id },
+        user: { id },
+      } = request;
+
+      const carts = await service.getCarts(tenant_id, page, limit, filter, id);
+
+      return reply.status(StatusCode.SuccessOK).send({
+        status: "success",
+        code: CASSuccessCode.DATA_RETRIEVED,
+        message: CASSuccessMessage.DATA_RETRIEVED,
+        data: carts,
+      });
     },
     getItmeById: async (request, reply) => {
+      if (!request.tenant) {
+        throw {};
+      }
+      const { params: { item_id }, tenant: { id: tenant_id }, user: { id } } =
+        request;
+
+      const item = await service.getItemById(item_id, tenant_id, id);
+
+      return reply.status(StatusCode.SuccessOK).send({
+        data: item,
+        status: "success",
+        code: CASSuccessCode.DATA_RETRIEVED,
+        message: CASSuccessMessage.DATA_RETRIEVED,
+      });
     },
     removeItemById: async (request, reply) => {
+      if (!request.tenant) {
+        throw {};
+      }
+
+      const { params: { item_id }, tenant: { id: tenant_id }, user: { id } } =
+        request;
+
+      const item = await service.removeItemsFromCart(id, tenant_id, item_id);
+
+      return reply.status(StatusCode.SuccessOK).send({
+        data: item!,
+        status: "success",
+        code: CASSuccessCode.DATA_DELETED,
+        message: CASSuccessMessage.DATA_DELETED,
+      });
     },
   };
 };
