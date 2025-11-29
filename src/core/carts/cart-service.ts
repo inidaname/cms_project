@@ -96,6 +96,19 @@ export class CartService {
     data: Omit<CartItemsInput, "cart_id" | "value">[],
     cart_id?: string,
   ) {
+    const productChecks = await Promise.all(
+      data.map((item) =>
+        this.products.isTenantProduct(tenant_id, item.product_id)
+      ),
+    );
+
+    const hasValidTenantProduct = productChecks.some((result) => result);
+
+    if (!hasValidTenantProduct) {
+      throw new Error("Invalid product for tenant");
+    }
+
+    // Compute item values
     const itemsWithComputedValue = data.map((item) => ({
       ...item,
       value: item.product_quantity * item.unit_price,
@@ -105,7 +118,8 @@ export class CartService {
       (sum, item) => sum + item.value,
       0,
     );
-    let existingCart;
+
+    let existingCart: any = null;
 
     if (cart_id) {
       existingCart = await this.getCartById(cart_id, tenant_id);
@@ -119,7 +133,7 @@ export class CartService {
       })
       : existingCart;
 
-    return await this.prisma.cart.update({
+    return this.prisma.cart.update({
       where: { id: cart.id },
       data: {
         totalValue: cart.totalValue < totalValue

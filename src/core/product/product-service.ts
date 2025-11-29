@@ -47,9 +47,11 @@ export class ProductService {
   }
 
   async isTenantProduct(tenant_id: string, product_id: string) {
-    return !!(await this.prisma.product.findFirst({
+    const record = await this.prisma.product.findFirst({
       where: { id: product_id, tenant_id },
-    }));
+    });
+
+    return record !== null;
   }
 
   async getAllTenantProducts(
