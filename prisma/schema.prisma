@@ -8,6 +8,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
 model Tenant {
   id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String

@@ -1,3 +1,5 @@
+import { createPagination } from "../../utils/pagination";
+
 export class SalesService {
   prisma;
 
@@ -48,5 +50,26 @@ export class SalesService {
     return await this.prisma.sales.findFirst({
       where: { id, tenant_id, user_id },
     });
+  }
+
+  async getAllSales(tenant_id: string, page = 1, limit = 10, user_id?: string) {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.sales.findMany({
+        where: { tenant_id, ...(user_id && { user_id }) },
+        skip,
+        take: limit,
+        include: { cart: true, paidBy: true, payments: true, tenant: true },
+      }),
+      this.prisma.sales.count({
+        where: { tenant_id, ...(user_id && { user_id }) },
+      }),
+    ]);
+
+    return {
+      data,
+      metadata: createPagination(total, page, limit),
+    };
   }
 }

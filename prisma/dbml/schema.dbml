@@ -1,0 +1,262 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table Tenant {
+  id String [pk]
+  name String [not null]
+  domain String [unique, not null]
+  apiKey String [unique, not null]
+  status TenantStatus [not null, default: 'ACTIVE']
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  users User [not null]
+  PasswordToken PasswordToken [not null]
+  products Product [not null]
+  sales Sales [not null]
+  carts Cart [not null]
+  discounts Discount [not null]
+  revenue Payments [not null]
+}
+
+Table User {
+  id String [pk]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  email String [not null]
+  name String
+  password String [not null]
+  phone String
+  role Role [not null, default: 'USER']
+  agreed Boolean [default: false]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  PasswordToken PasswordToken [not null]
+  RefreshToken RefreshToken [not null]
+  carts Cart [not null]
+  purchases Sales [not null]
+  payments Payments [not null]
+
+  indexes {
+    (tenant_id, email) [unique]
+  }
+}
+
+Table PasswordToken {
+  id String [pk]
+  tokenHash String [unique, not null]
+  user_id String [not null]
+  user User [not null]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  expiresAt DateTime [not null]
+  used Boolean [not null, default: false]
+  createdAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (tenant_id, user_id) [unique]
+  }
+}
+
+Table Product {
+  id String [pk]
+  title String [not null]
+  description String [not null]
+  owner Tenant [not null]
+  tenant_id String [not null]
+  attributes Json [not null]
+  quantity Float [default: 0]
+  price Float [not null, default: 0]
+  variation Boolean [default: false]
+  status ProductStatus [default: 'Available']
+  productVariations ProductVariation [not null]
+  cartItems CartItems [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (tenant_id, title) [unique]
+  }
+}
+
+Table ProductVariation {
+  id String [pk]
+  product Product [not null]
+  product_id String [not null]
+  type VariationTypes [not null]
+  value String [not null]
+  quantity Float [default: 0]
+  price Float [not null, default: 0]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  cartItems CartItems [not null]
+}
+
+Table Discount {
+  id String [pk]
+  title String [not null]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  percentage Float [not null, default: 0]
+  active Boolean [not null, default: false]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table CartItems {
+  id String [pk]
+  items Product [not null]
+  product_id String [not null]
+  cart Cart [not null]
+  cart_id String [not null]
+  product_quantity Float [not null, default: 0]
+  value Float [not null, default: 0]
+  unit_price Float [not null, default: 0]
+  variation ProductVariation
+  variation_id String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Cart {
+  id String [pk]
+  customer User [not null]
+  user_id String [not null]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  cartItems CartItems [not null]
+  totalValue Float [not null, default: 0]
+  status CartStatus [default: 'Active']
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  sales Sales
+}
+
+Table RefreshToken {
+  id String [pk]
+  token String [unique, not null]
+  userId String [not null]
+  user User [not null]
+  revoked Boolean [default: false]
+  expiresAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table Sales {
+  id String [pk]
+  cart Cart [not null]
+  cart_id String [unique, not null]
+  amount Float [not null, default: 0]
+  status SalesStatus [default: 'Paid']
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  paidBy User [not null]
+  user_id String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  payments Payments
+}
+
+Table Payments {
+  id String [pk]
+  channel PaymentChannels
+  amount Float [not null, default: 0]
+  status PaymentStatus
+  reference String
+  paidBy User [not null]
+  user_id String [not null]
+  paidTo Tenant [not null]
+  tenant_id String [not null]
+  paidFor Sales [not null]
+  sales_id String [unique, not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Enum ProductStatus {
+  Available
+  OutOfStock
+  Discontinued
+}
+
+Enum VariationTypes {
+  Color
+  Size
+  Others
+}
+
+Enum CartStatus {
+  Active
+  Abandoned
+  Checkedout
+}
+
+Enum SalesStatus {
+  Delivered
+  Paid
+  Returned
+  Cancelled
+}
+
+Enum PaymentChannels {
+  Card
+  Transfer
+  Cash
+  Other
+}
+
+Enum PaymentStatus {
+  Success
+  Failed
+  Pending
+}
+
+Enum Role {
+  OWNER
+  ADMIN
+  USER
+}
+
+Enum TenantStatus {
+  ACTIVE
+  EXPIRED
+  DELETED
+  OUTDATED
+  ABANDONED
+}
+
+Ref: User.tenant_id > Tenant.id
+
+Ref: PasswordToken.user_id > User.id
+
+Ref: PasswordToken.tenant_id > Tenant.id
+
+Ref: Product.tenant_id > Tenant.id
+
+Ref: ProductVariation.product_id > Product.id
+
+Ref: Discount.tenant_id > Tenant.id
+
+Ref: CartItems.product_id > Product.id
+
+Ref: CartItems.cart_id > Cart.id
+
+Ref: CartItems.variation_id > ProductVariation.id
+
+Ref: Cart.user_id > User.id
+
+Ref: Cart.tenant_id > Tenant.id
+
+Ref: RefreshToken.userId > User.id
+
+Ref: Sales.cart_id - Cart.id
+
+Ref: Sales.tenant_id > Tenant.id
+
+Ref: Sales.user_id > User.id
+
+Ref: Payments.user_id > User.id
+
+Ref: Payments.tenant_id > Tenant.id
+
+Ref: Payments.sales_id - Sales.id
