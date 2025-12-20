@@ -1,11 +1,17 @@
 import { salesHandler } from "../../core/sales/sales-handler";
+import { SalesSchemas } from "../../core/sales/sales.schema";
 
 const checkoutRoutes: PluginType = async (app, opts) => {
-  app.addHook("onRequest", app.authenticate);
   const handler = salesHandler(app);
 
-  app.post("/", handler.initCheckout);
-  app.get("/:checkout_id", handler.getCheckoutById);
+  app.addHook("onRequest", app.authenticate);
+
+  app.post("/", { schema: SalesSchemas.initCheckout }, handler.initCheckout);
+  app.get(
+    "/:checkout_id",
+    { schema: SalesSchemas.getCheckoutById },
+    handler.getCheckoutById
+  );
   app.get("/", handler.getCheckouts);
 };
 

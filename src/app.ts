@@ -36,6 +36,9 @@ const app: PluginType = async (fastify, opts) => {
   fastify.register(apiReference, {
     routePrefix: "/documentation",
     configuration: {
+      spec: {
+        content: () => fastify.swagger(),
+      },
       metaData: {
         title: "Commitly API reference Page",
         description: "My page page",
@@ -50,7 +53,7 @@ const app: PluginType = async (fastify, opts) => {
         clientKey: "fetch",
       },
       authentication: {
-        preferredSecurityScheme: "bearerAuth",
+        preferredSecurityScheme: [["bearerAuth", "apiKey"]],
       },
       theme: "bluePlanet",
     },

@@ -1,25 +1,36 @@
-// import fp from "fastify-plugin";
+import fp from "fastify-plugin";
+import StatusCode from "status-code-enum";
+import { CASErrorCode } from "../utils/enums";
 
-// const tenantResolver: PluginType = async (fastify) => {
-//   fastify.decorateRequest("tenant", null);
+const tenantResolver: PluginType = async (fastify) => {
+  fastify.decorateRequest("tenant", null);
 
-//   fastify.addHook("preHandler", async (req, reply) => {
-//     const apiKey = req.headers["x-api-key"] as string | undefined;
+  fastify.addHook("preHandler", async (req, reply) => {
+    const apiKey = req.headers["x-api-key"] as string | undefined;
+    console.log("apiKey", apiKey);
 
-//     if (!apiKey) {
-//       return reply.status(401).send({ error: "Missing x-api-key header" });
-//     }
+    if (!apiKey) {
+      return reply.status(StatusCode.ClientErrorUnauthorized).send({
+        message: "Missing API Key (x-api-key header)",
+        code: CASErrorCode.UNAUTHORIZED_ACCESS,
+        status: "error",
+      });
+    }
 
-//     const tenant = await fastify.prisma.tenant.findUnique({
-//       where: { apiKey },
-//     });
+    const tenant = await fastify.prisma.tenant.findUnique({
+      where: { apiKey },
+    });
 
-//     if (!tenant) {
-//       return reply.status(403).send({ error: "Invalid API key" });
-//     }
+    if (!tenant) {
+      return reply.status(StatusCode.ClientErrorForbidden).send({
+        message: "Invalid API key",
+        code: "",
+        status: "error",
+      });
+    }
 
-//     req.tenant = tenant;
-//   });
-// };
+    req.tenant = tenant;
+  });
+};
 
-// export default fp(tenantResolver);
+export default fp(tenantResolver);

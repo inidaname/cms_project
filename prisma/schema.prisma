@@ -125,7 +125,7 @@ model Discount {
 
 model CartItems {
   id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  items            Product           @relation(fields: [product_id], references: [id])
+  item             Product           @relation(fields: [product_id], references: [id])
   product_id       String            @db.Uuid
   cart             Cart              @relation(fields: [cart_id], references: [id])
   cart_id          String            @db.Uuid

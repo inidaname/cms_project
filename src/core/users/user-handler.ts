@@ -46,7 +46,7 @@ export const userHandler: UserHandler = (app) => {
 
     getUserById: async (request, reply) => {
       const { id } = request.tenant!;
-      const { user_id } = request.params;
+      const { id: user_id } = request.user;
       const user = await service.getUserById(user_id, id);
 
       if (!user) {
@@ -93,7 +93,7 @@ export const userHandler: UserHandler = (app) => {
 
     updateUser: async (request, reply) => {
       const { id } = request.tenant!;
-      const { user_id } = request.params;
+      const { id: user_id } = request.user;
       const body = request.body;
       const user = await service.getUserById(user_id, id);
 

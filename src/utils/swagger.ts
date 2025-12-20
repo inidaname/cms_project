@@ -36,13 +36,14 @@ export const swaggerOption: FastifyRegisterOptions<SwaggerOptions> = {
     components: {
       securitySchemes: {
         bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
-        ApiKeyAuth: {
+        apiKey: {
           type: "apiKey",
           in: "header",
           name: "x-api-key",
           description: "API key required to access tenant-protected endpoints.",
         },
       },
+
       schemas: {
         Tenant: {
           type: "object",
@@ -274,5 +275,6 @@ export const swaggerOption: FastifyRegisterOptions<SwaggerOptions> = {
         },
       },
     },
+    security: [{ apiKey: [] }],
   },
 };
