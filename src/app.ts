@@ -73,4 +73,3 @@ const app: PluginType = async (fastify, opts) => {
 };
 
 export default app;
-export { app, options };
