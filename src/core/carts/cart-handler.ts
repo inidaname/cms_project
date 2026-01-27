@@ -6,6 +6,41 @@ export const cartsHandler: CartsHandler = (app) => {
   const service = new CartService(app.prisma);
 
   return {
+    // editCartLogistics: async (request, reply) => {
+    //   const { cart_id } = request.params;
+    //   const result = await service.updateLogistics(cart_id, request.body);
+
+    //   return reply.status(StatusCode.SuccessOK).send({
+    //     status: "success",
+    //     data: result as any,
+    //   } as any);
+    // },
+    // addBundleToCart: async (request, reply) => {
+    //   try {
+    //     const { id: tenant_id } = request.tenant!;
+    //     const user_id = (request.user as any).id;
+    //     const { cart_id } = request.params;
+    //     const body: any = request.body;
+
+    //     const result = await service.addBundleToCart({
+    //       tenant_id,
+    //       user_id,
+    //       cart_id,
+    //       ...body,
+    //     });
+
+    //     return reply.status(StatusCode.SuccessOK).send({
+    //       status: "success",
+    //       message: "Bundle added to cart successfully",
+    //       data: result,
+    //     } as any);
+    //   } catch (error: any) {
+    //     return reply.status(StatusCode.ClientErrorBadRequest).send({
+    //       status: "error",
+    //       message: error.message,
+    //     } as any);
+    //   }
+    // },
     addItmesToCart: async (request, reply) => {
       if (!request.tenant) {
         return;
@@ -19,7 +54,7 @@ export const cartsHandler: CartsHandler = (app) => {
         id,
         tenant_id,
         body,
-        cart_id,
+        cart_id
       );
       return reply.status(StatusCode.SuccessCreated).send({
         message: CASSuccessMessage.DATA_CREATED,
@@ -32,8 +67,11 @@ export const cartsHandler: CartsHandler = (app) => {
       if (!request.tenant) {
         return;
       }
-      const { tenant: { id: tenant_id }, params: { cart_id }, user: { id } } =
-        request;
+      const {
+        tenant: { id: tenant_id },
+        params: { cart_id },
+        user: { id },
+      } = request;
 
       const deleteCart = await service.deleteCart(cart_id, tenant_id, id);
 
@@ -48,11 +86,16 @@ export const cartsHandler: CartsHandler = (app) => {
       if (!request.tenant) {
         return;
       }
-      const { tenant: { id: tenant_id }, user: { id } } = request;
+
+      const {
+        tenant: { id: tenant_id },
+        user: { id },
+        body,
+      } = request;
       const cart = await service.createCart({
         tenant_id,
         user_id: id,
-        totalValue: 0,
+        ...body,
       });
 
       return reply.status(StatusCode.SuccessCreated).send({
@@ -62,7 +105,7 @@ export const cartsHandler: CartsHandler = (app) => {
         message: CASSuccessMessage.DATA_CREATED,
       });
     },
-    editCartById: async (request, reply) => {
+    changeCartStatus: async (request, reply) => {
       if (!request.tenant) {
         return;
       }
@@ -118,7 +161,7 @@ export const cartsHandler: CartsHandler = (app) => {
         item_id,
         id,
         tenant_id,
-        Number.parseInt(quantity),
+        Number.parseInt(quantity)
       );
 
       if (!item) {
@@ -173,8 +216,11 @@ export const cartsHandler: CartsHandler = (app) => {
       if (!request.tenant) {
         throw {};
       }
-      const { params: { item_id }, tenant: { id: tenant_id }, user: { id } } =
-        request;
+      const {
+        params: { item_id },
+        tenant: { id: tenant_id },
+        user: { id },
+      } = request;
 
       const item = await service.getItemById(item_id, tenant_id, id);
 
@@ -190,8 +236,11 @@ export const cartsHandler: CartsHandler = (app) => {
         throw {};
       }
 
-      const { params: { item_id }, tenant: { id: tenant_id }, user: { id } } =
-        request;
+      const {
+        params: { item_id },
+        tenant: { id: tenant_id },
+        user: { id },
+      } = request;
 
       const item = await service.removeItemsFromCart(id, tenant_id, item_id);
 

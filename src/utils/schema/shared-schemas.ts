@@ -9,6 +9,11 @@ export const SharedSchemas = {
         status: { type: "string", example: "success" },
         message: { type: "string" },
         code: { type: "string" },
+        data: {
+          type: "object",
+          additionalProperties: true,
+          nullable: true,
+        },
       },
     },
     Tenant: {
@@ -54,6 +59,35 @@ export const SharedSchemas = {
           enum: ["Available", "OutOfStock", "Discontinued"],
         },
         attributes: { type: "object", additionalProperties: true },
+        isBundle: { type: "boolean" },
+        min_items: { type: "integer", nullable: true },
+        max_items: { type: "integer", nullable: true },
+      },
+    },
+    Delivery: {
+      $id: "delivery",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        status: {
+          type: "string",
+          enum: [
+            "PENDING",
+            "PREPARING",
+            "OUT_FOR_DELIVERY",
+            "DELIVERED",
+            "FAILED",
+          ],
+        },
+        address: { type: "string" },
+        recipientName: { type: "string" },
+        recipientPhone: { type: "string" },
+        trackingNumber: { type: "string", nullable: true },
+        estimatedArrival: {
+          type: "string",
+          format: "date-time",
+          nullable: true,
+        },
       },
     },
     ProductVariation: {
@@ -94,7 +128,18 @@ export const SharedSchemas = {
       properties: {
         id: { type: "string", format: "uuid" },
         totalValue: { type: "number" },
-        status: { type: "string", enum: ["Active", "Abandoned", "Checkedout"] },
+        status: {
+          type: "string",
+          enum: ["Active", "Abandoned", "Checkedout"],
+        },
+        notes: { type: "string", nullable: true },
+        recipientName: { type: "string" },
+        recipientPhone: { type: "string" },
+        deliveryAddress: { type: "string" },
+        deliveryType: {
+          type: "string",
+          enum: ["PICKUP", "DELIVERY", "SHIPPING"],
+        },
         cartItems: {
           type: "array",
           items: {

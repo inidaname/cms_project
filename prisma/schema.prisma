@@ -27,6 +27,7 @@ model Tenant {
   carts         Cart[]
   discounts     Discount[]
   revenue       Payments[]
+  deliveries    Delivery[]
 
   @@index([name, domain])
 }
@@ -79,18 +80,35 @@ model Product {
   description       String             @db.Text
   owner             Tenant             @relation(fields: [tenant_id], references: [id])
   tenant_id         String             @db.Uuid
-  attributes        Json               @db.Json
+  attributes        Json?              @db.Json
   quantity          Float?             @default(0) @db.Real
   price             Float              @default(0.00) @db.DoublePrecision
   variation         Boolean?           @default(false)
   status            ProductStatus?     @default(Available)
-  productVariations ProductVariation[]
-  cartItems         CartItems[]
+  isBundle          Boolean            @default(false)
+  min_items         Int?               @default(1)
+  max_items         Int?               @default(1)
+  // If it's a bundle, these are the items available to be picked
+  bundleComponents  ProductComponent[] @relation("ParentProduct")
+  // If it's an item that can be put IN a bundle
+  asComponent       ProductComponent[] @relation("ChildProduct")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  productVariations ProductVariation[]
+  cartItems         CartItems[]
 
   @@unique([tenant_id, title])
   @@index([title])
+}
+
+// Logic for Gift Boxes/Catering: "Pick 3 items from this list"
+model ProductComponent {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentProduct   Product @relation("ParentProduct", fields: [parent_id], references: [id])
+  parent_id       String  @db.Uuid
+  childProduct    Product @relation("ChildProduct", fields: [child_id], references: [id])
+  child_id        String  @db.Uuid
+  additionalPrice Float   @default(0.00) @db.DoublePrecision
 }
 
 enum VariationTypes {
@@ -134,6 +152,9 @@ model CartItems {
   unit_price       Float             @default(0.00) @db.DoublePrecision
   variation        ProductVariation? @relation(fields: [variation_id], references: [id])
   variation_id     String?           @db.Uuid
+  parent_item_id   String?           @db.Uuid
+  parentItem       CartItems?        @relation("BundleSelection", fields: [parent_item_id], references: [id])
+  childItems       CartItems[]       @relation("BundleSelection")
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -146,27 +167,63 @@ enum CartStatus {
   Checkedout
 }
 
+enum DeliveryType {
+  PICKUP
+  DELIVERY
+  SHIPPING
+}
+
 model Cart {
-  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  customer   User        @relation(fields: [user_id], references: [id])
-  user_id    String      @db.Uuid
-  tenant     Tenant      @relation(fields: [tenant_id], references: [id])
-  tenant_id  String      @db.Uuid
-  cartItems  CartItems[]
-  totalValue Float       @default(0.00) @db.DoublePrecision
-  status     CartStatus? @default(Active)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  sales      Sales?
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customer        User         @relation(fields: [user_id], references: [id])
+  user_id         String       @db.Uuid
+  tenant          Tenant       @relation(fields: [tenant_id], references: [id])
+  tenant_id       String       @db.Uuid
+  cartItems       CartItems[]
+  totalValue      Float        @default(0.00) @db.DoublePrecision
+  status          CartStatus?  @default(Active)
+  notes           String?      @db.Text
+  recipientName   String?
+  recipientPhone  String?
+  deliveryAddress String?      @db.Text
+  deliveryType    DeliveryType @default(PICKUP)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  sales           Sales?
 
   @@index([user_id, tenant_id])
+}
+
+enum DeliveryStatus {
+  PENDING
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+}
+
+model Delivery {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales            Sales          @relation(fields: [sales_id], references: [id])
+  sales_id         String         @unique @db.Uuid
+  tenant           Tenant         @relation(fields: [tenant_id], references: [id])
+  tenant_id        String         @db.Uuid
+  address          String
+  recipientName    String
+  recipientPhone   String
+  status           DeliveryStatus @default(PENDING)
+  trackingNumber   String?        @unique
+  estimatedArrival DateTime?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model RefreshToken {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   revoked   Boolean? @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -192,6 +249,7 @@ model Sales {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   payments  Payments?
+  delivery  Delivery?
 }
 
 enum PaymentChannels {

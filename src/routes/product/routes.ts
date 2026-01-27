@@ -10,6 +10,14 @@ const productRoutes: PluginType = async (app, opts) => {
     handler.createProduct
   );
   app.get("/", handler.getTenantProducts);
+  app.post(
+    "/bundle/:product_id",
+    {
+      preHandler: [app.authenticate],
+      schema: ProductRouteSchemas.addBundleComponent,
+    },
+    handler.addToBundle
+  );
   app.get(
     "/variation/:product_id/:variation_id",
     { schema: ProductRouteSchemas.getVariation },

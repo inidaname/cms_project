@@ -9,19 +9,19 @@ export class UserService {
   }
 
   async createUser(data: UserInput) {
-    return await this.prisma.user.create({ data });
+    return await this.prisma.user.create({ data, include: { tenant: true } });
   }
 
   async getAllUsers(page = 1, limit = 10, filter?: string, tenant_id?: string) {
     const whereClause: Prisma.UserWhereInput = filter
       ? {
-        OR: [
-          { email: { contains: filter, mode: "insensitive" } },
-          { name: { contains: filter, mode: "insensitive" } },
-          { phone: { contains: filter, mode: "insensitive" } },
-        ],
-        tenant_id,
-      }
+          OR: [
+            { email: { contains: filter, mode: "insensitive" } },
+            { name: { contains: filter, mode: "insensitive" } },
+            { phone: { contains: filter, mode: "insensitive" } },
+          ],
+          tenant_id,
+        }
       : {};
 
     const skip = (page - 1) * limit;
@@ -54,10 +54,7 @@ export class UserService {
   async getUserByEmailOrPhone(filter: string, tenant_id: string) {
     return this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: filter },
-          { phone: filter },
-        ],
+        OR: [{ email: filter }, { phone: filter }],
         tenant_id,
       },
     });
@@ -66,13 +63,13 @@ export class UserService {
   async countTenantsUsers(tenant_id: string, filter?: string) {
     const where: Prisma.UserWhereInput = filter
       ? {
-        OR: [
-          { email: { contains: filter, mode: "insensitive" } },
-          { name: { contains: filter, mode: "insensitive" } },
-          { phone: { contains: filter, mode: "insensitive" } },
-        ],
-        tenant_id,
-      }
+          OR: [
+            { email: { contains: filter, mode: "insensitive" } },
+            { name: { contains: filter, mode: "insensitive" } },
+            { phone: { contains: filter, mode: "insensitive" } },
+          ],
+          tenant_id,
+        }
       : {};
     return await this.prisma.user.count({ where });
   }

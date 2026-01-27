@@ -8,15 +8,58 @@ export class ProductService {
     this.prisma = prisma;
   }
 
-  async addProduct(data: ProductInput, variation?: VariationInput) {
+  async isProductBundle(id: string) {
+    const product = await this.prisma.product.count({
+      where: { id, isBundle: true },
+    });
+
+    return product > 0;
+  }
+
+  async isTenantProduct(tenant_id: string, product_id: string) {
+    const record = await this.prisma.product.findFirst({
+      where: { id: product_id, tenant_id },
+    });
+
+    return record !== null;
+  }
+
+  async verifyTenantProducts(tenant_id: string, product_ids: string[]) {
+    const uniqueIds = [...new Set(product_ids)]; // Remove duplicates for the query
+    const count = await this.prisma.product.count({
+      where: {
+        tenant_id,
+        id: { in: uniqueIds },
+      },
+    });
+
+    return count === uniqueIds.length;
+  }
+
+  async addProduct(data: ProductInput) {
     const { attributes, ...rest } = data;
     return await this.prisma.product.create({
       data: {
         ...rest,
-        attributes: JSON.parse(attributes?.toString()!),
-        productVariations: rest.variation ? { create: variation } : {},
+        attributes: attributes ? attributes : {},
       },
       include: { productVariations: rest.variation! },
+    });
+  }
+
+  async addToBundle(data: ComponentInput[]) {
+    return await this.prisma.productComponent.createManyAndReturn({
+      data,
+      // skipDuplicates: true,
+      include: { parentProduct: true, childProduct: true },
+    });
+  }
+
+  async editBundle(id: string, data: Pick<ComponentInput, "additionalPrice">) {
+    return await this.prisma.productComponent.update({
+      where: { id },
+      data,
+      include: { childProduct: true, parentProduct: true },
     });
   }
 
@@ -24,10 +67,7 @@ export class ProductService {
     return await this.prisma.productVariation.create({ data });
   }
 
-  async editProduct(
-    id: string,
-    data: Partial<ProductInput>,
-  ) {
+  async editProduct(id: string, data: Partial<ProductInput>) {
     const { attributes, tenant_id: _, ...rest } = data;
     return await this.prisma.product.update({
       where: { id },
@@ -46,14 +86,6 @@ export class ProductService {
     });
   }
 
-  async isTenantProduct(tenant_id: string, product_id: string) {
-    const record = await this.prisma.product.findFirst({
-      where: { id: product_id, tenant_id },
-    });
-
-    return record !== null;
-  }
-
   async getAllTenantProducts(
     tenant_id: string,
     page = 1,
@@ -63,9 +95,9 @@ export class ProductService {
     const skip = (page - 1) * limit;
     const where: Prisma.ProductWhereInput = filter
       ? {
-        tenant_id,
-        OR: [{ title: { contains: filter, mode: "insensitive" } }],
-      }
+          tenant_id,
+          OR: [{ title: { contains: filter, mode: "insensitive" } }],
+        }
       : { tenant_id };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({

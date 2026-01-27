@@ -39,9 +39,9 @@ const cartRoute: PluginType = async (app, opts) => {
     handler.getCartById
   );
   app.put(
-    "/c/:cart_id?",
+    "/c/status/:cart_id?",
     { schema: CartSchemas.editCartStatus },
-    handler.editCartById
+    handler.changeCartStatus
   );
   app.delete(
     "/c/:cart_id",

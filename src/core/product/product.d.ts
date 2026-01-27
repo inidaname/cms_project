@@ -1,13 +1,12 @@
 type Product = InputType<import("@prisma/client").Product>;
 type ProductVariation = InputType<import("@prisma/client").ProductVariation>;
+type ProductComponent = InputType<import("@prisma/client").ProductComponent>;
 type ProductInput = InputType<Product>;
+type ComponentInput = InputType<ProductComponent>;
 type VariationInput = InputType<ProductVariation>;
 
 type Producthanlder = (app: FastifyInstance) => {
-  createProduct: Handler<
-    { product: Omit<ProductInput, "tenant_id">; variation?: VariationInput },
-    Product
-  >;
+  createProduct: Handler<Omit<ProductInput, "tenant_id">, Product>;
   updateProduct: Handler<
     Omit<Partial<ProductInput>, "tenant_id">,
     Product,
@@ -33,6 +32,11 @@ type Producthanlder = (app: FastifyInstance) => {
   createVariation: Handler<
     Omit<VariationInput, "product_id">,
     ProductVariation,
+    { product_id: string }
+  >;
+  addToBundle: Handler<
+    Omit<ComponentInput, "parent_id">[],
+    ProductComponent[],
     { product_id: string }
   >;
   updateVariation: Handler<

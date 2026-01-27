@@ -6,14 +6,19 @@ type CartsInput = InputType<Cart>;
 type CartItemsInput = InputType<CartItems>;
 
 type CartsHandler = (app: FastifyInstance) => {
-  startCart: Handler<void, Cart>;
+  // addBundleToCart: Handler<any, any, { cart_id }>;
+  // editCartLogistics: Handler<any, any, { cart_id }>;
+  startCart: Handler<
+    Omit<CartsInput, "status" | "user_id" | "tenant_id">,
+    Cart
+  >;
   addItmesToCart: Handler<
     Omit<CartItemsInput, "cart_id" | "value">[],
     Cart,
     { cart_id?: string }
   >;
   getCartById: Handler<void, Cart, { cart_id?: string }>; // cart_id is optional so it will get active cart
-  editCartById: Handler<{ status: CartStatus }, Cart, { cart_id?: string }>; // cart_id is optional so it will edit active cart
+  changeCartStatus: Handler<{ status: CartStatus }, Cart, { cart_id?: string }>; // cart_id is optional so it will edit active cart
   deleteCart: Handler<void, Cart, { cart_id: string }>;
   getCarts: PaginatedHandler<
     void,
@@ -22,7 +27,7 @@ type CartsHandler = (app: FastifyInstance) => {
     {
       page?: number;
       limit?: number;
-      filter?: import("@prisma/client").$Enums.CartStatus;
+      filter?: CartStatus;
     }
   >;
   getItmeById: Handler<void, CartItems, { item_id: string }>;

@@ -17,6 +17,7 @@ Table Tenant {
   carts Cart [not null]
   discounts Discount [not null]
   revenue Payments [not null]
+  deliveries Delivery [not null]
 }
 
 Table User {
@@ -64,19 +65,33 @@ Table Product {
   description String [not null]
   owner Tenant [not null]
   tenant_id String [not null]
-  attributes Json [not null]
+  attributes Json
   quantity Float [default: 0]
   price Float [not null, default: 0]
   variation Boolean [default: false]
   status ProductStatus [default: 'Available']
-  productVariations ProductVariation [not null]
-  cartItems CartItems [not null]
+  isBundle Boolean [not null, default: false]
+  min_items Int [default: 1]
+  max_items Int [default: 1]
+  bundleComponents ProductComponent [not null]
+  asComponent ProductComponent [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  productVariations ProductVariation [not null]
+  cartItems CartItems [not null]
 
   indexes {
     (tenant_id, title) [unique]
   }
+}
+
+Table ProductComponent {
+  id String [pk]
+  parentProduct Product [not null]
+  parent_id String [not null]
+  childProduct Product [not null]
+  child_id String [not null]
+  additionalPrice Float [not null, default: 0]
 }
 
 Table ProductVariation {
@@ -105,7 +120,7 @@ Table Discount {
 
 Table CartItems {
   id String [pk]
-  items Product [not null]
+  item Product [not null]
   product_id String [not null]
   cart Cart [not null]
   cart_id String [not null]
@@ -114,6 +129,9 @@ Table CartItems {
   unit_price Float [not null, default: 0]
   variation ProductVariation
   variation_id String
+  parent_item_id String
+  parentItem CartItems
+  childItems CartItems [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
 }
@@ -127,9 +145,31 @@ Table Cart {
   cartItems CartItems [not null]
   totalValue Float [not null, default: 0]
   status CartStatus [default: 'Active']
+  notes String
+  recipientName String
+  recipientPhone String
+  deliveryAddress String
+  deliveryType DeliveryType [not null, default: 'PICKUP']
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   sales Sales
+}
+
+Table Delivery {
+  id String [pk]
+  sales Sales [not null]
+  sales_id String [unique, not null]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  address String [not null]
+  recipientName String [not null]
+  recipientPhone String [not null]
+  status DeliveryStatus [not null, default: 'PENDING']
+  trackingNumber String [unique]
+  estimatedArrival DateTime
+  notes String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 }
 
 Table RefreshToken {
@@ -155,6 +195,7 @@ Table Sales {
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   payments Payments
+  delivery Delivery
 }
 
 Table Payments {
@@ -189,6 +230,20 @@ Enum CartStatus {
   Active
   Abandoned
   Checkedout
+}
+
+Enum DeliveryType {
+  PICKUP
+  DELIVERY
+  SHIPPING
+}
+
+Enum DeliveryStatus {
+  PENDING
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
 }
 
 Enum SalesStatus {
@@ -233,6 +288,10 @@ Ref: PasswordToken.tenant_id > Tenant.id
 
 Ref: Product.tenant_id > Tenant.id
 
+Ref: ProductComponent.parent_id > Product.id
+
+Ref: ProductComponent.child_id > Product.id
+
 Ref: ProductVariation.product_id > Product.id
 
 Ref: Discount.tenant_id > Tenant.id
@@ -243,11 +302,17 @@ Ref: CartItems.cart_id > Cart.id
 
 Ref: CartItems.variation_id > ProductVariation.id
 
+Ref: CartItems.parent_item_id - CartItems.id
+
 Ref: Cart.user_id > User.id
 
 Ref: Cart.tenant_id > Tenant.id
 
-Ref: RefreshToken.userId > User.id
+Ref: Delivery.sales_id - Sales.id
+
+Ref: Delivery.tenant_id > Tenant.id
+
+Ref: RefreshToken.userId > User.id [delete: Cascade]
 
 Ref: Sales.cart_id - Cart.id
 

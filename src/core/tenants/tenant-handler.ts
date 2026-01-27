@@ -8,6 +8,7 @@ import {
   CASSuccessCode,
   CASSuccessMessage,
 } from "../../utils/enums";
+import { sendTenantWelcomeEmail } from "../../helpers/content";
 
 export const tenantHandler: TenantHandler = (app) => {
   const service = new TenantService(app.prisma);
@@ -71,12 +72,20 @@ export const tenantHandler: TenantHandler = (app) => {
         ...body,
       });
 
+      await sendTenantWelcomeEmail({
+        apiKey: tenant.apiKey,
+        domain: tenant.domain,
+        email: user.email,
+        name: user.name ?? "",
+        tenantName: tenant.name,
+      });
+
       await userService.createUser({
         agreed: true,
         email: user?.email,
         name: user?.name,
         password: user.password,
-        phone: user.password,
+        phone: user.phone,
         role: "OWNER",
         tenant_id: tenant.id,
       });

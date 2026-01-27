@@ -18,6 +18,31 @@ export const CartSchemas = {
       },
     },
   },
+  updateLogistics: {
+    description:
+      "Set delivery address, notes, and recipient info before checkout",
+    tags: ["Cart"],
+    params: {
+      type: "object",
+      properties: { cart_id: { type: "string", format: "uuid" } },
+    },
+    body: {
+      type: "object",
+      properties: {
+        deliveryType: {
+          type: "string",
+          enum: ["PICKUP", "DELIVERY", "SHIPPING"],
+        },
+        deliveryAddress: { type: "string" },
+        notes: {
+          type: "string",
+          description: "Gift messages or cooking instructions",
+        },
+        recipientName: { type: "string" },
+        recipientPhone: { type: "string" },
+      },
+    },
+  },
   addItems: {
     summary: "Add Items",
     description:
@@ -40,6 +65,19 @@ export const CartSchemas = {
         product_id: { type: "string", format: "uuid" },
         variation_id: { type: "string", format: "uuid" },
         product_quantity: { type: "number", minimum: 1 },
+        selections: {
+          type: "array",
+          description: "Items inside the bundle",
+          items: {
+            type: "object",
+            required: ["product_id"],
+            properties: {
+              product_id: { type: "string", format: "uuid" },
+              variation_id: { type: "string", format: "uuid" },
+              quantity: { type: "number" },
+            },
+          },
+        },
       },
     },
     response: {
@@ -163,6 +201,66 @@ export const CartSchemas = {
           { $ref: "baseResponse#" },
           { type: "object", properties: { data: { $ref: "cartItems#" } } },
         ],
+      },
+    },
+  },
+};
+
+export const ExtendedCartSchemas = {
+  addBundleToCart: {
+    description: "Add a Gift Box or Catering Plate with selected sub-items",
+    tags: ["Carts"],
+    body: {
+      type: "object",
+      required: ["product_id", "selections"],
+      properties: {
+        product_id: {
+          type: "string",
+          format: "uuid",
+          description: "The ID of the Gift Box or Plate",
+        },
+        product_quantity: { type: "number", default: 1 },
+        selections: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["product_id"],
+            properties: {
+              product_id: {
+                type: "string",
+                format: "uuid",
+                description: "The chocolate/side dish ID",
+              },
+              variation_id: { type: "string", format: "uuid" },
+              quantity: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  updateOrderDetails: {
+    description: "Attach notes and delivery info to the cart before checkout",
+    tags: ["Carts"],
+    params: {
+      type: "object",
+      properties: { cart_id: { type: "string", format: "uuid" } },
+    },
+    body: {
+      type: "object",
+      properties: {
+        notes: {
+          type: "string",
+          example: 'Please include a "Happy Birthday" card.',
+        },
+        recipientName: { type: "string" },
+        recipientPhone: { type: "string" },
+        deliveryAddress: { type: "string" },
+        deliveryType: {
+          type: "string",
+          enum: ["PICKUP", "DELIVERY", "SHIPPING"],
+        },
       },
     },
   },

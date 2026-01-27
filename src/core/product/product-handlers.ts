@@ -12,12 +12,11 @@ export const productHandler: Producthanlder = (app) => {
   return {
     createProduct: async (request, reply) => {
       const { id } = request.tenant!;
-      const { product: data, variation } = request.body;
+      const data = request.body;
 
-      const product = await service.addProduct(
-        { ...data, tenant_id: id },
-        variation,
-      );
+      console.log("data", data);
+
+      const product = await service.addProduct({ ...data, tenant_id: id });
 
       return reply.status(StatusCode.SuccessCreated).send({
         message: CASSuccessMessage.DATA_CREATED,
@@ -47,6 +46,53 @@ export const productHandler: Producthanlder = (app) => {
         code: CASSuccessCode.DATA_UPDATED,
         status: "success",
         data: variation,
+      });
+    },
+    addToBundle: async (request, reply) => {
+      if (!request.tenant) {
+        throw {
+          message: CASErrorMessage.USER_NOT_FOUND,
+          code: CASErrorCode.USER_NOT_FOUND,
+          status: "error",
+          statusCode: StatusCode.ClientErrorNotFound,
+        };
+      }
+
+      const {
+        tenant: { id: tenent_id },
+        // user: { id },
+        params: { product_id },
+        body,
+      } = request;
+
+      const childProductIds = body.map((item) => item.child_id);
+      const [isParentOwner, isBundle, areChildrenValid] = await Promise.all([
+        service.isTenantProduct(tenent_id, product_id),
+        service.isProductBundle(product_id),
+        service.verifyTenantProducts(tenent_id, childProductIds),
+      ]);
+
+      if (!isParentOwner || !isBundle || !areChildrenValid) {
+        throw {
+          message: CASErrorMessage.USER_NOT_FOUND,
+          code: CASErrorCode.USER_NOT_FOUND,
+          status: "error",
+          statusCode: StatusCode.ClientErrorNotFound,
+        };
+      }
+
+      const preparedData = body.map((item) => ({
+        ...item,
+        parent_id: product_id,
+      }));
+
+      const products = await service.addToBundle(preparedData);
+
+      return reply.status(StatusCode.SuccessCreated).send({
+        code: CASSuccessCode.DATA_CREATED,
+        message: CASSuccessMessage.DATA_CREATED,
+        data: products,
+        status: "success",
       });
     },
     updateProduct: async (request, reply) => {

@@ -7,6 +7,7 @@ import {
   CASSuccessMessage,
 } from "../../utils/enums";
 import { AuthService } from "./auth-service";
+import { sendUserWelcomeEmail } from "../../helpers/content";
 
 export const authHandler: Authhandler = (app) => {
   const service = new AuthService(app.prisma);
@@ -56,10 +57,13 @@ export const authHandler: Authhandler = (app) => {
 
       const token = app.jwt.sign({ id, userType: "User" });
 
-      const newRefreshToken = app.jwt.sign({
-        id,
-        userType: "refresh_token",
-      }, { expiresIn: "7d" });
+      const newRefreshToken = app.jwt.sign(
+        {
+          id,
+          userType: "refresh_token",
+        },
+        { expiresIn: "7d" },
+      );
 
       await service.updateRefreshToken(refreshToken, newRefreshToken);
 
@@ -77,11 +81,7 @@ export const authHandler: Authhandler = (app) => {
 
       const stored = await service.getForgetPasswordToken(tokenHash);
 
-      if (
-        !stored ||
-        stored.used ||
-        stored.expiresAt < new Date()
-      ) {
+      if (!stored || stored.used || stored.expiresAt < new Date()) {
         throw {
           statusCode: StatusCode.ClientErrorBadRequest,
           message: "Invalid or expired token",
@@ -126,9 +126,10 @@ export const authHandler: Authhandler = (app) => {
       }
 
       const rawToken = crypto.randomBytes(32).toString("hex");
-      const tokenHash = crypto.createHash("sha256").update(rawToken).digest(
-        "hex",
-      );
+      const tokenHash = crypto
+        .createHash("sha256")
+        .update(rawToken)
+        .digest("hex");
 
       await service.deleteForgetPassword(user.id);
 
@@ -162,7 +163,7 @@ export const authHandler: Authhandler = (app) => {
 
       const getUser = await service.user.getUserByEmailOrPhone(email, id);
 
-      if (!getUser || !await app.bcrypt.compare(password, getUser.password)) {
+      if (!getUser || !(await app.bcrypt.compare(password, getUser.password))) {
         throw {
           statusCode: 401,
           message: CASErrorMessage.UNAUTHORIZED_ACCESS,
@@ -172,10 +173,13 @@ export const authHandler: Authhandler = (app) => {
 
       const token = app.jwt.sign({ id: getUser.id, userType: "User" });
 
-      const refreshToken = app.jwt.sign({
-        id: getUser.id,
-        userType: "refresh_token",
-      }, { expiresIn: "7d" });
+      const refreshToken = app.jwt.sign(
+        {
+          id: getUser.id,
+          userType: "refresh_token",
+        },
+        { expiresIn: "7d" },
+      );
 
       await service.addRefreshToken({
         token: refreshToken,
@@ -226,12 +230,21 @@ export const authHandler: Authhandler = (app) => {
         password: hashedPassword,
       });
 
+      await sendUserWelcomeEmail({
+        name: user.name ?? "",
+        email: user.email,
+        tenantName: user.tenant.name,
+      });
+
       const token = app.jwt.sign({ id: user.id, userType: "User" });
 
-      const refreshToken = app.jwt.sign({
-        id: user.id,
-        userType: "refresh_token",
-      }, { expiresIn: "7d" });
+      const refreshToken = app.jwt.sign(
+        {
+          id: user.id,
+          userType: "refresh_token",
+        },
+        { expiresIn: "7d" },
+      );
 
       await service.addRefreshToken({
         token: refreshToken,

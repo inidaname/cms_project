@@ -2,12 +2,23 @@ import fp from "fastify-plugin";
 import StatusCode from "status-code-enum";
 import { CASErrorCode } from "../utils/enums";
 
+const PUBLIC_ROUTES = [
+  "/docs",
+  "/docs/json",
+  "/health",
+  "/ping",
+  "/documentation",
+];
+
 const tenantResolver: PluginType = async (fastify) => {
   fastify.decorateRequest("tenant", null);
 
   fastify.addHook("preHandler", async (req, reply) => {
+    const url = req.raw.url ?? "";
+    if (PUBLIC_ROUTES.some((route) => url.startsWith(route))) {
+      return;
+    }
     const apiKey = req.headers["x-api-key"] as string | undefined;
-    console.log("apiKey", apiKey);
 
     if (!apiKey) {
       return reply.status(StatusCode.ClientErrorUnauthorized).send({
