@@ -8,7 +8,7 @@ import loadSchemas from "./helpers/load-schema";
 const schemaDir = join(__dirname, "./utils/schema");
 
 // Pass --options via CLI arguments in command to enable these options.
-const options: AppOptions = {};
+// const options: AppOptions = {};
 
 const app: PluginType = async (fastify, opts) => {
   // Place here your custom code!
