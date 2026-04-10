@@ -18,6 +18,92 @@ Table Tenant {
   discounts Discount [not null]
   revenue Payments [not null]
   deliveries Delivery [not null]
+  tenantEmailConfig TenantEmailConfig
+  subscribers Subscriber [not null]
+  lists List [not null]
+  campaigns Campaign [not null]
+  emailSends EmailSend [not null]
+}
+
+Table TenantEmailConfig {
+  id String [pk]
+  fromName String [not null]
+  fromEmail String [not null]
+  smtpHost String [not null]
+  smtpPort Int [not null]
+  smtpUser String [not null]
+  smtpPass String [not null]
+  tenant_id String [unique, not null]
+  tenant Tenant [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Subscriber {
+  id String [pk]
+  tenant_id String [not null]
+  email String [not null]
+  name String
+  status SubscriberStatus [not null, default: 'ACTIVE']
+  createdAt DateTime [default: `now()`, not null]
+  tenant Tenant [not null]
+  lists ListSubscriber [not null]
+  sends EmailSend [not null]
+
+  indexes {
+    (tenant_id, email) [unique]
+  }
+}
+
+Table List {
+  id String [pk]
+  tenant_id String [not null]
+  name String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  tenant Tenant [not null]
+  subscribers ListSubscriber [not null]
+}
+
+Table ListSubscriber {
+  listId String [not null]
+  subscriberId String [not null]
+  list List [not null]
+  subscriber Subscriber [not null]
+
+  indexes {
+    (listId, subscriberId) [pk]
+  }
+}
+
+Table Campaign {
+  id String [pk]
+  tenant_id String [not null]
+  subject String [not null]
+  htmlBody String [not null]
+  textBody String
+  status CampaignStatus [not null, default: 'DRAFT']
+  scheduledAt DateTime
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  tenant Tenant [not null]
+  sends EmailSend [not null]
+}
+
+Table EmailSend {
+  id String [pk]
+  tenant_id String [not null]
+  campaignId String [not null]
+  subscriberId String [not null]
+  status EmailSendStatus [not null, default: 'PENDING']
+  error String
+  sentAt DateTime
+  tenant Tenant [not null]
+  campaign Campaign [not null]
+  subscriber Subscriber [not null]
+
+  indexes {
+    (campaignId, subscriberId) [unique]
+  }
 }
 
 Table User {
@@ -279,6 +365,44 @@ Enum TenantStatus {
   OUTDATED
   ABANDONED
 }
+
+Enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+Enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+Enum EmailSendStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+Ref: TenantEmailConfig.tenant_id - Tenant.id
+
+Ref: Subscriber.tenant_id > Tenant.id
+
+Ref: List.tenant_id > Tenant.id
+
+Ref: ListSubscriber.listId > List.id [delete: Cascade]
+
+Ref: ListSubscriber.subscriberId > Subscriber.id [delete: Cascade]
+
+Ref: Campaign.tenant_id > Tenant.id
+
+Ref: EmailSend.tenant_id > Tenant.id
+
+Ref: EmailSend.campaignId > Campaign.id
+
+Ref: EmailSend.subscriberId > Subscriber.id
 
 Ref: User.tenant_id > Tenant.id
 

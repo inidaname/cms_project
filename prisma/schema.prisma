@@ -13,23 +13,103 @@ generator dbml {
 }
 
 model Tenant {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String
-  domain        String          @unique
-  apiKey        String          @unique
-  status        TenantStatus    @default(ACTIVE)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  users         User[]
-  PasswordToken PasswordToken[]
-  products      Product[]
-  sales         Sales[]
-  carts         Cart[]
-  discounts     Discount[]
-  revenue       Payments[]
-  deliveries    Delivery[]
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  domain            String             @unique
+  apiKey            String             @unique
+  status            TenantStatus       @default(ACTIVE)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  users             User[]
+  PasswordToken     PasswordToken[]
+  products          Product[]
+  sales             Sales[]
+  carts             Cart[]
+  discounts         Discount[]
+  revenue           Payments[]
+  deliveries        Delivery[]
+  tenantEmailConfig TenantEmailConfig?
+  subscribers       Subscriber[]
+  lists             List[]
+  campaigns         Campaign[]
+  emailSends        EmailSend[]
 
   @@index([name, domain])
+}
+
+model TenantEmailConfig {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fromName  String
+  fromEmail String
+  smtpHost  String
+  smtpPort  Int
+  smtpUser  String
+  smtpPass  String
+  tenant_id String   @unique @db.Uuid
+  tenant    Tenant   @relation(fields: [tenant_id], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscriber {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id String           @db.Uuid
+  email     String
+  name      String?
+  status    SubscriberStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  tenant    Tenant           @relation(fields: [tenant_id], references: [id])
+  lists     ListSubscriber[]
+  sends     EmailSend[]
+
+  @@unique([tenant_id, email])
+}
+
+model List {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String           @db.Uuid
+  name        String
+  createdAt   DateTime         @default(now())
+  tenant      Tenant           @relation(fields: [tenant_id], references: [id])
+  subscribers ListSubscriber[]
+}
+
+model ListSubscriber {
+  listId       String     @db.Uuid
+  subscriberId String     @db.Uuid
+  list         List       @relation(fields: [listId], references: [id], onDelete: Cascade)
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@id([listId, subscriberId])
+}
+
+model Campaign {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String         @db.Uuid
+  subject     String
+  htmlBody    String
+  textBody    String?
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  tenant      Tenant         @relation(fields: [tenant_id], references: [id])
+  sends       EmailSend[]
+}
+
+model EmailSend {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id    String          @db.Uuid
+  campaignId   String          @db.Uuid
+  subscriberId String          @db.Uuid
+  status       EmailSendStatus @default(PENDING)
+  error        String?
+  sentAt       DateTime?
+  tenant       Tenant          @relation(fields: [tenant_id], references: [id])
+  campaign     Campaign        @relation(fields: [campaignId], references: [id])
+  subscriber   Subscriber      @relation(fields: [subscriberId], references: [id])
+
+  @@unique([campaignId, subscriberId])
 }
 
 model User {
@@ -293,4 +373,24 @@ enum TenantStatus {
   DELETED
   OUTDATED
   ABANDONED
+}
+
+enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum EmailSendStatus {
+  PENDING
+  SENT
+  FAILED
 }
