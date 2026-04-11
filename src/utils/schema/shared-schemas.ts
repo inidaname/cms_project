@@ -1,50 +1,60 @@
 export const SharedSchemas = {
   $id: "shared",
   definitions: {
-    // Base Response Wrapper
     BaseResponse: {
       $id: "baseResponse",
       type: "object",
       properties: {
-        status: { type: "string", example: "success" },
+        status: { type: "string", enum: ["success", "error", "warning"] },
         message: { type: "string" },
         code: { type: "string" },
-        data: {
-          type: "object",
-          additionalProperties: true,
-          nullable: true,
-        },
+        data: { type: "object", additionalProperties: true, nullable: true },
       },
     },
+
+    PaginationMetadata: {
+      $id: "paginationMetadata",
+      type: "object",
+      properties: {
+        total: { type: "integer" },
+        page: { type: "integer" },
+        limit: { type: "integer" },
+        totalPages: { type: "integer" },
+        hasNextPage: { type: "boolean" },
+        hasPrevPage: { type: "boolean" },
+      },
+    },
+
     Tenant: {
       $id: "tenant",
       type: "object",
       properties: {
         id: { type: "string", format: "uuid" },
         name: { type: "string" },
-        domain: { type: "string", format: "url" },
+        domain: { type: "string" },
         apiKey: { type: "string" },
-        status: {
-          type: "string",
-          enum: ["ACTIVE", "EXPIRED", "DELETED", "OUTDATED", "ABANDONED"],
-        },
+        status: { type: "string", enum: ["ACTIVE", "EXPIRED", "DELETED", "OUTDATED", "ABANDONED"] },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },
     },
-    // User Model
+
     User: {
       $id: "user",
       type: "object",
       properties: {
         id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
         email: { type: "string", format: "email" },
         name: { type: "string", nullable: true },
         phone: { type: "string", nullable: true },
         role: { type: "string", enum: ["OWNER", "ADMIN", "USER"] },
+        agreed: { type: "boolean", nullable: true },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
       },
     },
-    // Product Model
+
     Product: {
       $id: "product",
       type: "object",
@@ -52,118 +62,193 @@ export const SharedSchemas = {
         id: { type: "string", format: "uuid" },
         title: { type: "string" },
         description: { type: "string" },
+        tenant_id: { type: "string", format: "uuid" },
         price: { type: "number" },
-        quantity: { type: "number" },
-        status: {
-          type: "string",
-          enum: ["Available", "OutOfStock", "Discontinued"],
-        },
+        quantity: { type: "number", nullable: true },
         attributes: { type: "object", additionalProperties: true },
+        variation: { type: "boolean" },
+        status: { type: "string", enum: ["Available", "OutOfStock", "Discontinued"] },
         isBundle: { type: "boolean" },
         min_items: { type: "integer", nullable: true },
         max_items: { type: "integer", nullable: true },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
       },
     },
-    Delivery: {
-      $id: "delivery",
-      type: "object",
-      properties: {
-        id: { type: "string", format: "uuid" },
-        status: {
-          type: "string",
-          enum: [
-            "PENDING",
-            "PREPARING",
-            "OUT_FOR_DELIVERY",
-            "DELIVERED",
-            "FAILED",
-          ],
-        },
-        address: { type: "string" },
-        recipientName: { type: "string" },
-        recipientPhone: { type: "string" },
-        trackingNumber: { type: "string", nullable: true },
-        estimatedArrival: {
-          type: "string",
-          format: "date-time",
-          nullable: true,
-        },
-      },
-    },
+
     ProductVariation: {
       $id: "productVariation",
       type: "object",
       properties: {
         id: { type: "string", format: "uuid" },
         product_id: { type: "string", format: "uuid" },
-        value: { type: "number", format: "double" },
-        type: {
-          type: "string",
-          enum: ["Color", "Size", "Others"],
-        },
-        price: { type: "number", format: "double" },
-        quantity: { type: "integer" },
+        type: { type: "string", enum: ["Color", "Size", "Others"] },
+        value: { type: "string" },
+        quantity: { type: "number", nullable: true },
+        price: { type: "number" },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },
     },
-    Cartitems: {
-      $id: "cartItems",
+
+    CartItem: {
+      $id: "cartItem",
       type: "object",
       properties: {
         id: { type: "string", format: "uuid" },
-        item: { $ref: "product#" },
-        product_quantity: { type: "integer" },
-        unit_price: { type: "number", format: "double" },
-        value: { type: "number", format: "double" },
-        variation: { oneOf: [{ type: "null" }, { $ref: "productVariation#" }] },
+        product_id: { type: "string", format: "uuid" },
+        cart_id: { type: "string", format: "uuid" },
+        product_quantity: { type: "number" },
+        unit_price: { type: "number" },
+        value: { type: "number" },
+        variation_id: { type: "string", format: "uuid", nullable: true },
+        product: { $ref: "product#" },
+        variation: { $ref: "productVariation#", nullable: true },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },
     },
-    // Cart Model
+
     Cart: {
       $id: "cart",
       type: "object",
       properties: {
         id: { type: "string", format: "uuid" },
+        user_id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
         totalValue: { type: "number" },
-        status: {
-          type: "string",
-          enum: ["Active", "Abandoned", "Checkedout"],
-        },
+        status: { type: "string", enum: ["Active", "Abandoned", "Checkedout"] },
         notes: { type: "string", nullable: true },
-        recipientName: { type: "string" },
-        recipientPhone: { type: "string" },
-        deliveryAddress: { type: "string" },
-        deliveryType: {
-          type: "string",
-          enum: ["PICKUP", "DELIVERY", "SHIPPING"],
-        },
-        cartItems: {
-          type: "array",
-          items: {
-            type: "object",
-            $ref: "cartItems#",
-          },
-        },
+        recipientName: { type: "string", nullable: true },
+        recipientPhone: { type: "string", nullable: true },
+        deliveryAddress: { type: "string", nullable: true },
+        deliveryType: { type: "string", enum: ["PICKUP", "DELIVERY", "SHIPPING"] },
+        cartItems: { type: "array", items: { $ref: "cartItem#" } },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
       },
     },
+
     Sales: {
       $id: "sales",
       type: "object",
       properties: {
         id: { type: "string", format: "uuid" },
-        status: {
-          type: "string",
-          enum: ["Delivered", "Paid", "Returned", "Cancelled"],
-        },
-        createdAt: { type: "string", format: "date-time" },
-        updatedAt: { type: "string", format: "date-time" },
+        cart_id: { type: "string", format: "uuid" },
         tenant_id: { type: "string", format: "uuid" },
         user_id: { type: "string", format: "uuid" },
-        cart_id: { type: "string", format: "uuid" },
-        amount: { type: "number", format: "double" },
+        amount: { type: "number" },
+        status: { type: "string", enum: ["Delivered", "Paid", "Returned", "Cancelled"] },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    Payment: {
+      $id: "payment",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        channel: { type: "string", enum: ["Card", "Transfer", "Cash", "Other"], nullable: true },
+        amount: { type: "number" },
+        status: { type: "string", enum: ["Success", "Failed", "Pending"], nullable: true },
+        reference: { type: "string", nullable: true },
+        finecoreTransactionRef: { type: "string", nullable: true },
+        authType: { type: "string", nullable: true },
+        requiresAuth: { type: "boolean" },
+        user_id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        sales_id: { type: "string", format: "uuid" },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    Delivery: {
+      $id: "delivery",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        sales_id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        address: { type: "string" },
+        recipientName: { type: "string" },
+        recipientPhone: { type: "string" },
+        status: { type: "string", enum: ["PENDING", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED"] },
+        trackingNumber: { type: "string", nullable: true },
+        estimatedArrival: { type: "string", format: "date-time", nullable: true },
+        notes: { type: "string", nullable: true },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    Subscriber: {
+      $id: "subscriber",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        email: { type: "string", format: "email" },
+        name: { type: "string", nullable: true },
+        status: { type: "string", enum: ["ACTIVE", "UNSUBSCRIBED", "BOUNCED"] },
+        createdAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    List: {
+      $id: "list",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        name: { type: "string" },
+        subscriberCount: { type: "integer" },
+        createdAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    Campaign: {
+      $id: "campaign",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        subject: { type: "string" },
+        htmlBody: { type: "string" },
+        textBody: { type: "string", nullable: true },
+        status: { type: "string", enum: ["DRAFT", "SCHEDULED", "SENDING", "SENT", "FAILED"] },
+        scheduledAt: { type: "string", format: "date-time", nullable: true },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    Discount: {
+      $id: "discount",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        title: { type: "string" },
+        percentage: { type: "number" },
+        active: { type: "boolean" },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    FinecoreVirtualAccount: {
+      $id: "finecoreVirtualAccount",
+      type: "object",
+      properties: {
+        account_name: { type: "string" },
+        account_number: { type: "string" },
+        bank_name: { type: "string" },
+        provider: { type: "string" },
+        amount: { type: "number" },
+        validity_period_mins: { type: "integer" },
+        expiresAt: { type: "string", format: "date-time" },
       },
     },
   },

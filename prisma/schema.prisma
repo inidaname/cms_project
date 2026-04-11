@@ -13,28 +13,47 @@ generator dbml {
 }
 
 model Tenant {
-  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name              String
-  domain            String             @unique
-  apiKey            String             @unique
-  status            TenantStatus       @default(ACTIVE)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  users             User[]
-  PasswordToken     PasswordToken[]
-  products          Product[]
-  sales             Sales[]
-  carts             Cart[]
-  discounts         Discount[]
-  revenue           Payments[]
-  deliveries        Delivery[]
-  tenantEmailConfig TenantEmailConfig?
-  subscribers       Subscriber[]
-  lists             List[]
-  campaigns         Campaign[]
-  emailSends        EmailSend[]
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String
+  domain               String                @unique
+  apiKey               String                @unique
+  status               TenantStatus          @default(ACTIVE)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  users                User[]
+  PasswordToken        PasswordToken[]
+  products             Product[]
+  sales                Sales[]
+  carts                Cart[]
+  discounts            Discount[]
+  revenue              Payments[]
+  deliveries           Delivery[]
+  tenantEmailConfig    TenantEmailConfig?
+  tenantFinecoreConfig TenantFinecoreConfig?
+  subscribers          Subscriber[]
+  lists                List[]
+  campaigns            Campaign[]
+  emailSends           EmailSend[]
+  projects             Project[]
+  auditLogs            AuditLog[]
+  teamInvites          TeamInvite[]
+  settings             TenantSettings?
+  notifications         Notification[]
+  notificationTemplates NotificationTemplate[]
 
   @@index([name, domain])
+}
+
+model TenantFinecoreConfig {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  apiKey        String
+  publicKey     String?
+  webhookSecret String?
+  environment   String   @default("sandbox")
+  tenant_id     String   @unique @db.Uuid
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model TenantEmailConfig {
@@ -129,6 +148,10 @@ model User {
   carts         Cart[]
   purchases     Sales[]
   payments      Payments[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+  pushTokens    PushToken[]
+  preferences   NotificationPreference?
 
   @@unique([tenant_id, email])
   @@index([email, phone])
@@ -346,19 +369,23 @@ enum PaymentStatus {
 }
 
 model Payments {
-  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  channel   PaymentChannels?
-  amount    Float            @default(0.00) @db.DoublePrecision
-  status    PaymentStatus?
-  reference String?
-  paidBy    User             @relation(fields: [user_id], references: [id])
-  user_id   String           @db.Uuid
-  paidTo    Tenant           @relation(fields: [tenant_id], references: [id])
-  tenant_id String           @db.Uuid
-  paidFor   Sales            @relation(fields: [sales_id], references: [id])
-  sales_id  String           @unique @db.Uuid
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id                     String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  channel                PaymentChannels?
+  amount                 Float            @default(0.00) @db.DoublePrecision
+  status                 PaymentStatus?
+  reference              String?
+  finecoreReference      String?
+  finecoreTransactionRef String?
+  authType               String?
+  requiresAuth           Boolean          @default(false)
+  paidBy                 User             @relation(fields: [user_id], references: [id])
+  user_id                String           @db.Uuid
+  paidTo                 Tenant           @relation(fields: [tenant_id], references: [id])
+  tenant_id              String           @db.Uuid
+  paidFor                Sales            @relation(fields: [sales_id], references: [id])
+  sales_id               String           @unique @db.Uuid
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
 }
 
 enum Role {
@@ -393,4 +420,189 @@ enum EmailSendStatus {
   PENDING
   SENT
   FAILED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+model Project {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant      Tenant        @relation(fields: [tenant_id], references: [id])
+  tenant_id   String        @db.Uuid
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  settings    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([tenant_id])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  INVITE
+  REMOVE
+  TRANSFER
+}
+
+enum AuditEntityType {
+  USER
+  PRODUCT
+  ORDER
+  PAYMENT
+  SETTINGS
+  TEAM
+  PROJECT
+}
+
+model AuditLog {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant     Tenant          @relation(fields: [tenant_id], references: [id])
+  tenant_id  String          @db.Uuid
+  user       User?           @relation(fields: [user_id], references: [id])
+  user_id    String?         @db.Uuid
+  action     AuditAction
+  entityType AuditEntityType
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime        @default(now())
+
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([entityType])
+}
+
+model TeamInvite {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant    Tenant   @relation(fields: [tenant_id], references: [id])
+  tenant_id String   @db.Uuid
+  email     String
+  role      Role     @default(USER)
+  token     String   @unique
+  invitedBy String   @db.Uuid
+  accepted  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([tenant_id, email])
+}
+
+model TenantSettings {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant                  Tenant   @relation(fields: [tenant_id], references: [id])
+  tenant_id               String   @unique @db.Uuid
+  storeName               String?
+  storeLogo               String?
+  storeDescription        String?
+  contactEmail            String?
+  contactPhone            String?
+  address                 String?
+  timezone                String   @default("Africa/Lagos")
+  currency                String   @default("NGN")
+  taxRate                 Float    @default(0.00)
+  notificationPreferences Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+enum NotificationType {
+  EMAIL
+  PUSH
+  SMS
+  IN_APP
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+model NotificationTemplate {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant      Tenant   @relation(fields: [tenant_id], references: [id])
+  tenant_id   String   @db.Uuid
+  name        String
+  type        NotificationType
+  subject     String?
+  body        String
+  variables   Json?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id])
+}
+
+model Notification {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant      Tenant              @relation(fields: [tenant_id], references: [id])
+  tenant_id   String              @db.Uuid
+  user        User?               @relation(fields: [user_id], references: [id])
+  user_id     String?             @db.Uuid
+  type        NotificationType
+  priority    NotificationPriority @default(NORMAL)
+  title       String
+  body        String
+  data        Json?
+  status      NotificationStatus  @default(PENDING)
+  sentAt      DateTime?
+  readAt      DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([status])
+}
+
+model PushToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user      User     @relation(fields: [user_id], references: [id])
+  user_id   String   @db.Uuid
+  token     String
+  platform  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([user_id, token])
+}
+
+model NotificationPreference {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user               User     @relation(fields: [user_id], references: [id])
+  user_id            String   @unique @db.Uuid
+  emailNotifications Boolean  @default(true)
+  pushNotifications  Boolean  @default(true)
+  smsNotifications   Boolean  @default(false)
+  inAppNotifications Boolean  @default(true)
+  notifyOnSale      Boolean  @default(true)
+  notifyOnPayment    Boolean  @default(true)
+  notifyOnLowStock   Boolean  @default(true)
+  notifyOnNewUser    Boolean  @default(true)
+  notifyOnCampaign   Boolean  @default(true)
+  quietHoursStart   String?
+  quietHoursEnd     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

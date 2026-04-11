@@ -181,7 +181,7 @@ export const CartSchemas = {
       200: {
         allOf: [
           { $ref: "baseResponse#" },
-          { type: "object", properties: { data: { $ref: "cartItems#" } } },
+          { type: "object", properties: { data: { $ref: "cartItem#" } } },
         ],
       },
     },
@@ -199,7 +199,7 @@ export const CartSchemas = {
       200: {
         allOf: [
           { $ref: "baseResponse#" },
-          { type: "object", properties: { data: { $ref: "cartItems#" } } },
+          { type: "object", properties: { data: { $ref: "cartItem#" } } },
         ],
       },
     },
@@ -252,7 +252,7 @@ export const ExtendedCartSchemas = {
       properties: {
         notes: {
           type: "string",
-          example: 'Please include a "Happy Birthday" card.',
+
         },
         recipientName: { type: "string" },
         recipientPhone: { type: "string" },

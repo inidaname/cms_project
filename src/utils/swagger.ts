@@ -1,15 +1,11 @@
-import { SwaggerOptions } from "@fastify/swagger";
-import { FastifyRegisterOptions } from "fastify";
-
-export const swaggerOption: FastifyRegisterOptions<SwaggerOptions> = {
-  prefix: "/docs",
+export const swaggerOption: any = {
   openapi: {
     openapi: "3.0.0",
     info: {
-      title: "Commitly API",
+      title: "Possible CMS API",
       description:
-        "This commitly api is built to serve the frontend application",
-      version: "0.0.1",
+        "Multi-tenant e-commerce API with authentication, product management, cart, checkout, and payment processing via Finecore.",
+      version: "1.0.0",
       contact: {
         email: "hello@mainheart.co",
         name: "Mainheart Ltd",
@@ -19,19 +15,29 @@ export const swaggerOption: FastifyRegisterOptions<SwaggerOptions> = {
 
     servers: [
       {
-        url: "https://stagingapi.commitly.io/",
+        url: "https://api.mainheart.co",
+        description: "Production server",
+      },
+      {
+        url: "https://staging.mainheart.co",
         description: "Staging server",
       },
       {
-        url: "http://localhost:3011",
+        url: "http://localhost:7373",
         description: "Development server",
       },
     ],
     tags: [
-      { name: "auth", description: "Auth related end-points" },
-      { name: "user", description: "User related end-points" },
-      { name: "goals", description: "Device management end-points" },
-      { name: "todos", description: "Device management end-points" },
+      { name: "Auth", description: "Authentication endpoints (register, login, password reset)" },
+      { name: "Users", description: "User management endpoints" },
+      { name: "Tenants", description: "Tenant management and configuration" },
+      { name: "Products", description: "Product CRUD, variations, and bundles" },
+      { name: "Carts", description: "Shopping cart management" },
+      { name: "Checkout", description: "Checkout and order management" },
+      { name: "Payments", description: "Payment processing via Finecore (card, USSD, virtual account)" },
+      { name: "Subscribers", description: "Email marketing subscribers and lists" },
+      { name: "Webhooks", description: "Webhook endpoints for external services" },
+      { name: "Admin", description: "Admin dashboard, analytics, team management, projects, settings, and audit logs" },
     ],
     components: {
       securitySchemes: {
@@ -45,233 +51,357 @@ export const swaggerOption: FastifyRegisterOptions<SwaggerOptions> = {
       },
 
       schemas: {
+        Role: {
+          type: "string",
+          enum: ["OWNER", "ADMIN", "USER"],
+          description: "User role for access control",
+        },
+        TenantStatus: {
+          type: "string",
+          enum: ["ACTIVE", "EXPIRED", "DELETED", "OUTDATED", "ABANDONED"],
+          description: "Tenant account status",
+        },
+        ProductStatus: {
+          type: "string",
+          enum: ["Available", "OutOfStock", "Discontinued"],
+          description: "Product availability status",
+        },
+        PaymentChannels: {
+          type: "string",
+          enum: ["Card", "Transfer", "Cash", "Other"],
+          description: "Payment channel type",
+        },
+        PaymentStatus: {
+          type: "string",
+          enum: ["Success", "Failed", "Pending"],
+          description: "Payment transaction status",
+        },
+        CartStatus: {
+          type: "string",
+          enum: ["Active", "Abandoned", "Checkedout"],
+          description: "Cart status",
+        },
+        DeliveryType: {
+          type: "string",
+          enum: ["PICKUP", "DELIVERY", "SHIPPING"],
+          description: "Delivery method",
+        },
+        DeliveryStatus: {
+          type: "string",
+          enum: ["PENDING", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED"],
+          description: "Delivery tracking status",
+        },
+        SalesStatus: {
+          type: "string",
+          enum: ["Delivered", "Paid", "Returned", "Cancelled"],
+          description: "Order/sales status",
+        },
+        SubscriberStatus: {
+          type: "string",
+          enum: ["ACTIVE", "UNSUBSCRIBED", "BOUNCED"],
+          description: "Email subscriber status",
+        },
+        CampaignStatus: {
+          type: "string",
+          enum: ["DRAFT", "SCHEDULED", "SENDING", "SENT", "FAILED"],
+          description: "Email campaign status",
+        },
+        EmailSendStatus: {
+          type: "string",
+          enum: ["PENDING", "SENT", "FAILED"],
+          description: "Email send status",
+        },
+        VariationTypes: {
+          type: "string",
+          enum: ["Color", "Size", "Others"],
+          description: "Product variation type",
+        },
+
         Tenant: {
           type: "object",
-          required: [
-            "id",
-            "name",
-            "domain",
-            "apiKey",
-            "status",
-            "createdAt",
-            "updatedAt",
-          ],
+          required: ["id", "name", "domain", "apiKey", "status", "createdAt", "updatedAt"],
           properties: {
-            id: {
-              type: "string",
-              format: "uuid",
-              example: "88d3d92e-4613-44f9-bb60-78d8185e2c36",
-            },
-            name: { type: "string", example: "Finecore" },
-            domain: { type: "string", example: "finecore.co" },
-            apiKey: { type: "string", example: "fc_live_3kj2h2j3h2jh23h23jh" },
-            status: { $ref: "#/components/schemas/TenantStatus" },
-            createdAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-01-01T10:30:00Z",
-            },
-            updatedAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-01-10T10:30:00Z",
-            },
-            users: {
-              type: "array",
-              items: { $ref: "#/components/schemas/User" },
-            },
-            PasswordToken: {
-              type: "array",
-              items: { $ref: "#/components/schemas/PasswordToken" },
-            },
-          },
-          example: {
-            id: "88d3d92e-4613-44f9-bb60-78d8185e2c36",
-            name: "Finecore",
-            domain: "finecore.co",
-            apiKey: "fc_live_3kj2h2j3h2jh23h23jh",
-            status: "ACTIVE",
-            createdAt: "2025-01-01T10:30:00Z",
-            updatedAt: "2025-01-10T10:30:00Z",
+            id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+            domain: { type: "string" },
+            apiKey: { type: "string", description: "Unique API key for tenant access" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
 
         User: {
           type: "object",
-          required: [
-            "id",
-            "tenant_id",
-            "email",
-            "password",
-            "role",
-            "createdAt",
-            "updatedAt",
-          ],
+          required: ["id", "tenant_id", "email", "role", "createdAt", "updatedAt"],
           properties: {
-            id: {
-              type: "string",
-              format: "uuid",
-              example: "a7c09c4c-e50a-4f2f-9f9f-4512a1c29eff",
-            },
-            tenant_id: {
-              type: "string",
-              format: "uuid",
-              example: "88d3d92e-4613-44f9-bb60-78d8185e2c36",
-            },
-            tenant: { $ref: "#/components/schemas/Tenant" },
-            email: {
-              type: "string",
-              format: "email",
-              example: "user@example.com",
-            },
-            name: { type: "string", nullable: true, example: "John Doe" },
-            password: {
-              type: "string",
-              example: "$2b$10$encryptedpasswordhash",
-            },
-            phone: {
-              type: "string",
-              nullable: true,
-              example: "+2348012345678",
-            },
-            role: { $ref: "#/components/schemas/Role" },
-            agreed: { type: "boolean", nullable: true, example: true },
-            createdAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-01-02T14:00:00Z",
-            },
-            updatedAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-01-08T08:00:00Z",
-            },
-            PasswordToken: {
-              type: "array",
-              items: { $ref: "#/components/schemas/PasswordToken" },
-            },
-            RefreshToken: {
-              type: "array",
-              items: { $ref: "#/components/schemas/RefreshToken" },
-            },
-          },
-          example: {
-            id: "a7c09c4c-e50a-4f2f-9f9f-4512a1c29eff",
-            tenant_id: "88d3d92e-4613-44f9-bb60-78d8185e2c36",
-            email: "user@example.com",
-            name: "John Doe",
-            role: "USER",
-            phone: "+2348012345678",
-            agreed: true,
-            createdAt: "2025-01-02T14:00:00Z",
-            updatedAt: "2025-01-08T08:00:00Z",
+            id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid", description: "Tenant this user belongs to" },
+            email: { type: "string", format: "email" },
+            name: { type: "string", nullable: true as unknown as undefined },
+            phone: { type: "string", nullable: true as unknown as undefined },
+            agreed: { type: "boolean", nullable: true as unknown as undefined },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
 
-        PasswordToken: {
+        Product: {
           type: "object",
-          required: [
-            "id",
-            "tokenHash",
-            "user_id",
-            "tenant_id",
-            "expiresAt",
-            "createdAt",
-            "used",
-          ],
+          required: ["id", "title", "price", "tenant_id", "createdAt", "updatedAt"],
           properties: {
-            id: {
-              type: "string",
-              format: "uuid",
-              example: "d902f65a-30a7-4b61-bf80-3fbd6285b1e2",
-            },
-            tokenHash: {
-              type: "string",
-              example: "bb8e3faf700c1f2cabfa55d27e51f3c8",
-            },
-            user_id: {
-              type: "string",
-              format: "uuid",
-              example: "a7c09c4c-e50a-4f2f-9f9f-4512a1c29eff",
-            },
-            user: { $ref: "#/components/schemas/User" },
-            tenant_id: {
-              type: "string",
-              format: "uuid",
-              example: "88d3d92e-4613-44f9-bb60-78d8185e2c36",
-            },
-            tenant: { $ref: "#/components/schemas/Tenant" },
-            expiresAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-02-01T00:00:00Z",
-            },
-            used: { type: "boolean", example: false },
-            createdAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-01-20T10:10:00Z",
-            },
-          },
-          example: {
-            id: "d902f65a-30a7-4b61-bf80-3fbd6285b1e2",
-            tokenHash: "bb8e3faf700c1f2cabfa55d27e51f3c8",
-            user_id: "a7c09c4c-e50a-4f2f-9f9f-4512a1c29eff",
-            tenant_id: "88d3d92e-4613-44f9-bb60-78d8185e2c36",
-            expiresAt: "2025-02-01T00:00:00Z",
-            used: false,
-            createdAt: "2025-01-20T10:10:00Z",
+            id: { type: "string", format: "uuid" },
+            title: { type: "string" },
+            description: { type: "string" },
+            tenant_id: { type: "string", format: "uuid" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
 
-        RefreshToken: {
+        ProductVariation: {
           type: "object",
-          required: ["id", "token", "userId", "expiresAt", "createdAt"],
+          required: ["id", "product_id", "type", "value", "createdAt", "updatedAt"],
           properties: {
-            id: {
-              type: "string",
-              format: "uuid",
-              example: "1ed04c98-cdd6-4a3d-bba1-55b4470ea23e",
-            },
-            token: { type: "string", example: "refresh_1h287rh2h3r2h32rh" },
-            userId: {
-              type: "string",
-              format: "uuid",
-              example: "a7c09c4c-e50a-4f2f-9f9f-4512a1c29eff",
-            },
-            user: { $ref: "#/components/schemas/User" },
-            revoked: { type: "boolean", nullable: true, example: false },
-            expiresAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-03-01T00:00:00Z",
-            },
-            createdAt: {
-              type: "string",
-              format: "date-time",
-              example: "2025-01-10T00:00:00Z",
-            },
-          },
-          example: {
-            id: "1ed04c98-cdd6-4a3d-bba1-55b4470ea23e",
-            token: "refresh_1h287rh2h3r2h32rh",
-            userId: "a7c09c4c-e50a-4f2f-9f9f-4512a1c29eff",
-            revoked: false,
-            expiresAt: "2025-03-01T00:00:00Z",
-            createdAt: "2025-01-10T00:00:00Z",
+            id: { type: "string", format: "uuid" },
+            product_id: { type: "string", format: "uuid" },
+            value: { type: "string" },
+            quantity: { type: "number", format: "double", nullable: true as unknown as undefined },
+            price: { type: "number", format: "double" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
 
-        Role: {
-          type: "string",
-          enum: ["OWNER", "ADMIN", "USER"],
-          example: "USER",
+        Cart: {
+          type: "object",
+          required: ["id", "user_id", "tenant_id", "totalValue", "status", "createdAt", "updatedAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            user_id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid" },
+            totalValue: { type: "number", format: "double" },
+            notes: { type: "string", nullable: true as unknown as undefined },
+            recipientName: { type: "string", nullable: true as unknown as undefined },
+            recipientPhone: { type: "string", nullable: true as unknown as undefined },
+            deliveryAddress: { type: "string", nullable: true as unknown as undefined },
+            cartItems: {
+              type: "array",
+              items: { type: "object" },
+            },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
         },
 
-        TenantStatus: {
-          type: "string",
-          enum: ["ACTIVE", "EXPIRED", "DELETED", "OUTDATED", "ABANDONED"],
-          example: "ACTIVE",
+        CartItem: {
+          type: "object",
+          required: ["id", "product_id", "cart_id", "product_quantity", "createdAt", "updatedAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            product_id: { type: "string", format: "uuid" },
+            cart_id: { type: "string", format: "uuid" },
+            product_quantity: { type: "number", format: "double" },
+            unit_price: { type: "number", format: "double" },
+            value: { type: "number", format: "double" },
+            variation_id: { type: "string", format: "uuid", nullable: true as unknown as undefined },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        Sales: {
+          type: "object",
+          required: ["id", "cart_id", "tenant_id", "user_id", "amount", "status", "createdAt", "updatedAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            cart_id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid" },
+            user_id: { type: "string", format: "uuid" },
+            amount: { type: "number", format: "double" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        Payment: {
+          type: "object",
+          required: ["id", "user_id", "tenant_id", "sales_id", "createdAt", "updatedAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            amount: { type: "number", format: "double" },
+            reference: { type: "string", nullable: true as unknown as undefined, description: "Internal payment reference" },
+            finecoreTransactionRef: { type: "string", nullable: true as unknown as undefined, description: "Finecore transaction reference" },
+            authType: { type: "string", nullable: true as unknown as undefined, description: "Authentication type (OTP, 3DS)" },
+            requiresAuth: { type: "boolean", default: false },
+            user_id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid" },
+            sales_id: { type: "string", format: "uuid" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        Delivery: {
+          type: "object",
+          required: ["id", "sales_id", "tenant_id", "address", "recipientName", "recipientPhone", "status", "createdAt", "updatedAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            sales_id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid" },
+            address: { type: "string" },
+            recipientName: { type: "string" },
+            recipientPhone: { type: "string" },
+            trackingNumber: { type: "string", nullable: true as unknown as undefined },
+            estimatedArrival: { type: "string", format: "date-time", nullable: true as unknown as undefined },
+            notes: { type: "string", nullable: true as unknown as undefined },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        Subscriber: {
+          type: "object",
+          required: ["id", "tenant_id", "email", "status", "createdAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid" },
+            email: { type: "string", format: "email" },
+            name: { type: "string", nullable: true as unknown as undefined },
+            createdAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        List: {
+          type: "object",
+          required: ["id", "tenant_id", "name", "createdAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+            subscriberCount: { type: "integer" },
+            createdAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        Campaign: {
+          type: "object",
+          required: ["id", "tenant_id", "subject", "status", "createdAt", "updatedAt"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            tenant_id: { type: "string", format: "uuid" },
+            subject: { type: "string" },
+            htmlBody: { type: "string" },
+            textBody: { type: "string", nullable: true as unknown as undefined },
+            scheduledAt: { type: "string", format: "date-time", nullable: true as unknown as undefined },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        FinecoreConfig: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            environment: { type: "string", enum: ["sandbox", "live"] },
+            hasApiKey: { type: "boolean" },
+            hasPublicKey: { type: "boolean" },
+            hasWebhookSecret: { type: "boolean" },
+          },
+        },
+
+        FinecoreCardPayment: {
+          type: "object",
+          properties: {
+            transaction_reference: { type: "string" },
+            requires_authentication: { type: "boolean" },
+            auth_type: { type: "string", enum: ["OTP", "3DS"], nullable: true as unknown as undefined },
+                next_action: { type: "string" },
+            acs_url: { type: "string", nullable: true as unknown as undefined, description: "3DS redirect URL" },
+          },
+        },
+
+        FinecoreUSSDPayment: {
+          type: "object",
+          properties: {
+            bank_short_code: { type: "string" },
+            reference: { type: "string" },
+            transaction_reference: { type: "string" },
+            response_code: { type: "string" },
+          },
+        },
+
+        FinecoreVirtualAccount: {
+          type: "object",
+          properties: {
+            account_name: { type: "string" },
+            account_number: { type: "string" },
+            bank_name: { type: "string" },
+            provider: { type: "string" },
+            amount: { type: "number" },
+            validity_period_mins: { type: "integer", description: "Minutes until account expires" },
+            expiresAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        FinecoreWebhook: {
+          type: "object",
+          properties: {
+            event: { type: "string" },
+            data: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                reference: { type: "string" },
+                amount: { type: "number" },
+                currency: { type: "string" },
+                status: { type: "string", enum: ["COMPLETED", "PENDING", "FAILED"] },
+                type: { type: "string", enum: ["CREDIT", "DEBIT"] },
+                category: { type: "string" },
+                created_at: { type: "string", format: "date-time" },
+              },
+            },
+          },
+        },
+
+        PaginationMetadata: {
+          type: "object",
+          properties: {
+            total: { type: "integer", description: "Total number of items" },
+            page: { type: "integer", description: "Current page number" },
+            limit: { type: "integer", description: "Items per page" },
+            totalPages: { type: "integer", description: "Total number of pages" },
+            hasNextPage: { type: "boolean" },
+            hasPrevPage: { type: "boolean" },
+          },
+        },
+
+        PaginatedResponse: {
+          type: "object",
+          properties: {
+            data: {
+              type: "array",
+              items: {},
+            },
+          },
+        },
+
+        BaseResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["success", "error", "warning"] },
+            message: { type: "string" },
+            code: { type: "string" },
+            data: { type: "object", additionalProperties: true, nullable: true as unknown as undefined },
+          },
+        },
+
+        ErrorResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["error"] },
+            message: { type: "string" },
+            code: { type: "string" },
+          },
         },
       },
     },

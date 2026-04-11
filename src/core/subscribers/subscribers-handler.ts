@@ -12,6 +12,27 @@ import {
   EmailSendService,
   TenantEmailConfigService,
 } from "./subscribers-service";
+import { SubscriberInput, CampaignInput, TenantEmailConfigInput, SubscriberHandler } from "./subscribers-types";
+
+interface ScheduleCampaignBody {
+  scheduledAt: string;
+}
+
+interface SendCampaignBody {
+  listId?: string;
+}
+
+interface UpdateEmailSendBody {
+  status: string;
+  error?: string;
+}
+
+type GenericResponse = {
+  status: "success" | "error";
+  message?: string;
+  code?: string;
+  data?: any;
+};
 
 export const emailMarketingHandler: SubscriberHandler = (app) => {
   const subscriberService = new SubscriberService(app.prisma);
@@ -20,32 +41,38 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
   const emailSendService = new EmailSendService(app.prisma);
   const tenantEmailConfigService = new TenantEmailConfigService(app.prisma);
 
+  const sendError = (reply: any, statusCode: StatusCode, message: string, code: string) => {
+    return reply.status(statusCode).send({
+      status: "error",
+      message,
+      code,
+    } as GenericResponse);
+  };
+
+  const sendSuccess = (reply: any, statusCode: StatusCode, data?: any, message?: string, code?: string) => {
+    return reply.status(statusCode).send({
+      status: "success",
+      message: message || CASSuccessMessage.OPERATION_SUCCESSFUL,
+      code: code || CASSuccessCode.OPERATION_SUCCESSFUL,
+      ...(data !== undefined && { data }),
+    } as GenericResponse);
+  };
+
   return {
-    // Subscriber Handlers
     createSubscriber: async (request, reply) => {
       if (!request.tenant) {
-        throw {
-          message: CASErrorMessage.TENANT_NOT_FOUND,
-          code: CASErrorCode.TENANT_NOT_FOUND,
-          status: "error",
-          statusCode: StatusCode.ClientErrorUnauthorized,
-        };
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const body = request.body;
+      const body = request.body as Omit<SubscriberInput, "tenant_id" | "status">;
 
       try {
         const subscriber = await subscriberService.createSubscription({
           tenant_id,
           status: "ACTIVE",
           ...body,
-        });
-        return reply.status(StatusCode.SuccessCreated).send({
-          message: CASSuccessMessage.DATA_CREATED,
-          code: CASSuccessCode.DATA_CREATED,
-          status: "success",
-          data: subscriber,
-        });
+        } as any);
+        return sendSuccess(reply, StatusCode.SuccessCreated, subscriber, CASSuccessMessage.DATA_CREATED, CASSuccessCode.DATA_CREATED);
       } catch (error: any) {
         console.log("error", error);
       }
@@ -53,15 +80,10 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
 
     getSubscribers: async (request, reply) => {
       if (!request.tenant) {
-        throw {
-          message: CASErrorMessage.TENANT_NOT_FOUND,
-          code: CASErrorCode.TENANT_NOT_FOUND,
-          status: "error",
-          statusCode: StatusCode.ClientErrorUnauthorized,
-        };
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { page, limit, filter } = request.query;
+      const { page, limit, filter } = request.query as { page: string; limit: string; filter: string };
 
       try {
         const subscribers = await subscriberService.getSubscriptions(
@@ -70,12 +92,7 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           Number(limit),
           filter,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-          data: subscribers,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, subscribers, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
         console.log("error", error);
       }
@@ -83,15 +100,10 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
 
     getSubscriberById: async (request, reply) => {
       if (!request.tenant) {
-        throw {
-          message: CASErrorMessage.TENANT_NOT_FOUND,
-          code: CASErrorCode.TENANT_NOT_FOUND,
-          status: "error",
-          statusCode: StatusCode.ClientErrorUnauthorized,
-        };
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { subscriber_id } = request.params;
+      const { subscriber_id } = request.params as { subscriber_id?: string };
 
       try {
         const subscriber = await subscriberService.getSubscriptionById(
@@ -99,33 +111,21 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           subscriber_id!,
         );
         if (!subscriber) {
-          return reply
-            .status(StatusCode.ClientErrorNotFound)
-            .send({ status: "error", message: "Subscriber not found" });
+          return sendError(reply, StatusCode.ClientErrorNotFound, CASErrorMessage.SUBSCRIBER_NOT_FOUND, CASErrorCode.SUBSCRIBER_NOT_FOUND);
         }
-        return reply.status(StatusCode.SuccessOK).send({
-          data: subscriber,
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, subscriber, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     updateSubscriber: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { subscriber_id } = request.params;
-      const body = request.body;
+      const { subscriber_id } = request.params as { subscriber_id?: string };
+      const body = request.body as Partial<SubscriberInput>;
 
       try {
         const updatedSubscriber = await subscriberService.updateSubscription(
@@ -133,139 +133,87 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           subscriber_id!,
           body,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          data: updatedSubscriber,
-          message: CASSuccessMessage.DATA_UPDATED,
-          code: CASSuccessCode.DATA_UPDATED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, updatedSubscriber, CASSuccessMessage.DATA_UPDATED, CASSuccessCode.DATA_UPDATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     deleteSubscriber: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { subscriber_id } = request.params;
+      const { subscriber_id } = request.params as { subscriber_id?: string };
 
       try {
         await subscriberService.deleteSubscription(tenant_id, subscriber_id!);
-        return reply.status(StatusCode.SuccessNoContent).send({
-          code: CASSuccessCode.DATA_DELETED,
-          message: CASSuccessMessage.DATA_DELETED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessNoContent, undefined, CASSuccessMessage.DATA_DELETED, CASSuccessCode.DATA_DELETED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
-    // List Handlers
     createList: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const body = request.body;
+      const body = request.body as { name: string };
 
       try {
-        const list = await listService.createList({ tenant_id, ...body });
-        return reply.status(StatusCode.SuccessCreated).send({
-          message: CASSuccessMessage.DATA_CREATED,
-          code: CASSuccessCode.DATA_CREATED,
-          status: "success",
-          data: list,
-        });
+        const list = await listService.createList({ tenant_id, ...body } as any);
+        return sendSuccess(reply, StatusCode.SuccessCreated, list, CASSuccessMessage.DATA_CREATED, CASSuccessCode.DATA_CREATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     getLists: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { page, limit, filter } = request.query;
+      const { page, limit, filter } = request.query as { page?: string; limit?: string; filter?: string };
 
       try {
         const lists = await listService.getLists(
           tenant_id,
-          page,
-          limit,
+          page ? Number(page) : undefined,
+          limit ? Number(limit) : undefined,
           filter,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-          data: lists,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, lists, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     getListById: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { list_id } = request.params;
+      const { list_id } = request.params as { list_id?: string };
 
       try {
         const list = await listService.getListById(tenant_id, list_id!);
         if (!list) {
-          return reply
-            .status(StatusCode.ClientErrorNotFound)
-            .send({ status: "error", message: "List not found" });
+          return sendError(reply, StatusCode.ClientErrorNotFound, CASErrorMessage.LIST_NOT_FOUND, CASErrorCode.LIST_NOT_FOUND);
         }
-        return reply.status(StatusCode.SuccessOK).send({
-          data: list,
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, list, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     updateList: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { list_id } = request.params;
-      const body = request.body;
+      const { list_id } = request.params as { list_id?: string };
+      const body = request.body as Partial<{ name: string }>;
 
       try {
         const updatedList = await listService.updateList(
@@ -273,58 +221,36 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           list_id!,
           body,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          data: updatedList,
-          message: CASSuccessMessage.DATA_UPDATED,
-          code: CASSuccessCode.DATA_UPDATED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, updatedList, CASSuccessMessage.DATA_UPDATED, CASSuccessCode.DATA_UPDATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     deleteList: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { list_id } = request.params;
+      const { list_id } = request.params as { list_id?: string };
 
       try {
         await listService.deleteList(tenant_id, list_id!);
-        return reply.status(StatusCode.SuccessNoContent).send({
-          code: CASSuccessCode.DATA_DELETED,
-          message: CASSuccessMessage.DATA_DELETED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessNoContent, undefined, CASSuccessMessage.DATA_DELETED, CASSuccessCode.DATA_DELETED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     addSubscriberToList: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { subscriber_id, list_id } = request.params;
+      const { subscriber_id, list_id } = request.params as { subscriber_id?: string; list_id?: string };
 
       if (!subscriber_id || !list_id) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: "Subscriber ID and List ID are required.",
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, CASErrorMessage.MISSING_REQUIRED_FIELD, CASErrorCode.MISSING_REQUIRED_FIELD);
       }
 
       try {
@@ -333,34 +259,21 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           subscriber_id,
           list_id,
         );
-        return reply.status(StatusCode.SuccessCreated).send({
-          message: "Subscriber added to list successfully",
-          code: CASSuccessCode.DATA_CREATED,
-          status: "success",
-          data: result,
-        });
+        return sendSuccess(reply, StatusCode.SuccessCreated, result, CASSuccessMessage.SUBSCRIBER_ADDED_TO_LIST, CASSuccessCode.DATA_CREATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     removeSubscriberFromList: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { subscriber_id, list_id } = request.params;
+      const { subscriber_id, list_id } = request.params as { subscriber_id?: string; list_id?: string };
 
       if (!subscriber_id || !list_id) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: "Subscriber ID and List ID are required.",
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, CASErrorMessage.MISSING_REQUIRED_FIELD, CASErrorCode.MISSING_REQUIRED_FIELD);
       }
 
       try {
@@ -369,86 +282,56 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           subscriber_id,
           list_id,
         );
-        return reply.status(StatusCode.SuccessNoContent).send({
-          code: CASSuccessCode.DATA_DELETED,
-          message: "Subscriber removed from list successfully",
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessNoContent, undefined, CASSuccessMessage.SUBSCRIBER_REMOVED_FROM_LIST, CASSuccessCode.DATA_DELETED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
-    // Campaign Handlers
     createCampaign: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const body = request.body;
+      const body = request.body as CampaignInput;
 
       try {
         const campaign = await campaignService.createCampaign({
           tenant_id,
           ...body,
-        });
-        return reply.status(StatusCode.SuccessCreated).send({
-          message: CASSuccessMessage.DATA_CREATED,
-          code: CASSuccessCode.DATA_CREATED,
-          status: "success",
-          data: campaign,
-        });
+        } as any);
+        return sendSuccess(reply, StatusCode.SuccessCreated, campaign, CASSuccessMessage.DATA_CREATED, CASSuccessCode.DATA_CREATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     getCampaigns: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { page, limit, filter } = request.query;
+      const { page, limit, filter } = request.query as { page?: string; limit?: string; filter?: string };
 
       try {
         const campaigns = await campaignService.getCampaigns(
           tenant_id,
-          page,
-          limit,
+          page ? Number(page) : undefined,
+          limit ? Number(limit) : undefined,
           filter,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-          data: campaigns,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, campaigns, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     getCampaignById: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { campaign_id } = request.params;
+      const { campaign_id } = request.params as { campaign_id?: string };
 
       try {
         const campaign = await campaignService.getCampaignById(
@@ -456,33 +339,21 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           campaign_id!,
         );
         if (!campaign) {
-          return reply
-            .status(StatusCode.ClientErrorNotFound)
-            .send({ status: "error", message: "Campaign not found" });
+          return sendError(reply, StatusCode.ClientErrorNotFound, CASErrorMessage.CAMPAIGN_NOT_FOUND, CASErrorCode.CAMPAIGN_NOT_FOUND);
         }
-        return reply.status(StatusCode.SuccessOK).send({
-          data: campaign,
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, campaign, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     updateCampaign: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { campaign_id } = request.params;
-      const body = request.body;
+      const { campaign_id } = request.params as { campaign_id?: string };
+      const body = request.body as Partial<CampaignInput>;
 
       try {
         const updatedCampaign = await campaignService.updateCampaign(
@@ -490,53 +361,34 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           campaign_id!,
           body,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          data: updatedCampaign,
-          message: CASSuccessMessage.DATA_UPDATED,
-          code: CASSuccessCode.DATA_UPDATED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, updatedCampaign, CASSuccessMessage.DATA_UPDATED, CASSuccessCode.DATA_UPDATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     deleteCampaign: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { campaign_id } = request.params;
+      const { campaign_id } = request.params as { campaign_id?: string };
 
       try {
         await campaignService.deleteCampaign(tenant_id, campaign_id!);
-        return reply.status(StatusCode.SuccessNoContent).send({
-          code: CASSuccessCode.DATA_DELETED,
-          message: CASSuccessMessage.DATA_DELETED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessNoContent, undefined, CASSuccessMessage.DATA_DELETED, CASSuccessCode.DATA_DELETED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     scheduleCampaign: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { campaign_id } = request.params;
-      const { scheduledAt } = request.body;
+      const { campaign_id } = request.params as { campaign_id?: string };
+      const { scheduledAt } = request.body as ScheduleCampaignBody;
 
       try {
         const updatedCampaign = await campaignService.scheduleCampaign(
@@ -544,29 +396,19 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           campaign_id!,
           new Date(scheduledAt),
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          data: updatedCampaign,
-          message: CASSuccessMessage.DATA_UPDATED,
-          code: CASSuccessCode.DATA_UPDATED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, updatedCampaign, CASSuccessMessage.CAMPAIGN_SCHEDULED, CASSuccessCode.CAMPAIGN_SCHEDULED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     sendCampaignToSubscribers: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { campaign_id } = request.params;
-      const { listId } = request.body; // Optional list ID to send to specific list
+      const { campaign_id } = request.params as { campaign_id?: string };
+      const { listId } = request.body as SendCampaignBody;
 
       try {
         const emailSends = await campaignService.sendCampaignToSubscribers(
@@ -574,61 +416,46 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           campaign_id!,
           listId,
         );
-        return reply.status(StatusCode.SuccessAccepted).send({
-          message: "Campaign send initiated",
-          code: CASSuccessCode.DATA_CREATED,
-          status: "success",
-          data: { emailSendsCount: emailSends.count },
-        });
+        return sendSuccess(reply, StatusCode.SuccessAccepted, { emailSendsCount: emailSends.length }, CASSuccessMessage.EMAIL_SEND_INITIATED, CASSuccessCode.CAMPAIGN_CREATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
-    // EmailSend Handlers
     getEmailSends: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { page, limit, filter, campaignId, subscriberId } = request.query;
+      const { page, limit, filter, campaignId, subscriberId } = request.query as {
+        page?: string;
+        limit?: string;
+        filter?: string;
+        campaignId?: string;
+        subscriberId?: string;
+      };
 
       try {
         const emailSends = await emailSendService.getEmailSends(
           tenant_id,
-          page,
-          limit,
+          page ? Number(page) : undefined,
+          limit ? Number(limit) : undefined,
           filter,
           campaignId,
           subscriberId,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-          data: emailSends,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, emailSends, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     getEmailSendById: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { email_send_id } = request.params;
+      const { email_send_id } = request.params as { email_send_id?: string };
 
       try {
         const emailSend = await emailSendService.getEmailSendById(
@@ -636,64 +463,41 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
           email_send_id!,
         );
         if (!emailSend) {
-          return reply
-            .status(StatusCode.ClientErrorNotFound)
-            .send({ status: "error", message: "Email send record not found" });
+          return sendError(reply, StatusCode.ClientErrorNotFound, CASErrorMessage.EMAIL_SEND_RECORD_NOT_FOUND, CASErrorCode.EMAIL_SEND_RECORD_NOT_FOUND);
         }
-        return reply.status(StatusCode.SuccessOK).send({
-          data: emailSend,
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, emailSend, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     updateEmailSendStatus: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const { email_send_id } = request.params;
-      const { status, error } = request.body; // Expecting 'status' and optionally 'error'
+      const { email_send_id } = request.params as { email_send_id?: string };
+      const { status, error } = request.body as UpdateEmailSendBody;
 
       try {
         const updatedEmailSend = await emailSendService.updateEmailSendStatus(
           tenant_id,
           email_send_id!,
-          status,
+          status as any,
           error,
         );
-        return reply.status(StatusCode.SuccessOK).send({
-          data: updatedEmailSend,
-          message: CASSuccessMessage.DATA_UPDATED,
-          code: CASSuccessCode.DATA_UPDATED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, updatedEmailSend, CASSuccessMessage.DATA_UPDATED, CASSuccessCode.DATA_UPDATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
-    // TenantEmailConfig Handlers
     createOrUpdateTenantEmailConfig: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
-      const body = request.body;
+      const body = request.body as Omit<TenantEmailConfigInput, "tenant_id">;
 
       try {
         const config =
@@ -701,25 +505,15 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
             tenant_id,
             body,
           );
-        return reply.status(StatusCode.SuccessOK).send({
-          message: CASSuccessMessage.DATA_UPDATED,
-          code: CASSuccessCode.DATA_UPDATED,
-          status: "success",
-          data: config,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, config, CASSuccessMessage.TENANT_EMAIL_CONFIG_UPDATED, CASSuccessCode.DATA_UPDATED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     getTenantEmailConfig: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
 
@@ -727,45 +521,25 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
         const config =
           await tenantEmailConfigService.getTenantEmailConfig(tenant_id);
         if (!config) {
-          return reply.status(StatusCode.ClientErrorNotFound).send({
-            status: "error",
-            message: "Tenant email config not found",
-          });
+          return sendError(reply, StatusCode.ClientErrorNotFound, CASErrorMessage.EMAIL_CONFIG_INVALID, CASErrorCode.EMAIL_CONFIG_INVALID);
         }
-        return reply.status(StatusCode.SuccessOK).send({
-          data: config,
-          status: "success",
-          code: CASSuccessCode.DATA_RETRIEVED,
-          message: CASSuccessMessage.DATA_RETRIEVED,
-        });
+        return sendSuccess(reply, StatusCode.SuccessOK, config, CASSuccessMessage.DATA_RETRIEVED, CASSuccessCode.DATA_RETRIEVED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
 
     deleteTenantEmailConfig: async (request, reply) => {
       if (!request.tenant) {
-        return reply
-          .status(StatusCode.ClientErrorUnauthorized)
-          .send({ message: "Tenant not found" });
+        return sendError(reply, StatusCode.ClientErrorUnauthorized, CASErrorMessage.TENANT_NOT_FOUND, CASErrorCode.TENANT_NOT_FOUND);
       }
       const { id: tenant_id } = request.tenant;
 
       try {
         await tenantEmailConfigService.deleteTenantEmailConfig(tenant_id);
-        return reply.status(StatusCode.SuccessNoContent).send({
-          code: CASSuccessCode.DATA_DELETED,
-          message: CASSuccessMessage.DATA_DELETED,
-          status: "success",
-        });
+        return sendSuccess(reply, StatusCode.SuccessNoContent, undefined, CASSuccessMessage.DATA_DELETED, CASSuccessCode.DATA_DELETED);
       } catch (error: any) {
-        return reply.status(StatusCode.ClientErrorBadRequest).send({
-          status: "error",
-          message: error.message,
-        });
+        return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
       }
     },
   };

@@ -19,10 +19,29 @@ Table Tenant {
   revenue Payments [not null]
   deliveries Delivery [not null]
   tenantEmailConfig TenantEmailConfig
+  tenantFinecoreConfig TenantFinecoreConfig
   subscribers Subscriber [not null]
   lists List [not null]
   campaigns Campaign [not null]
   emailSends EmailSend [not null]
+  projects Project [not null]
+  auditLogs AuditLog [not null]
+  teamInvites TeamInvite [not null]
+  settings TenantSettings
+  notifications Notification [not null]
+  notificationTemplates NotificationTemplate [not null]
+}
+
+Table TenantFinecoreConfig {
+  id String [pk]
+  apiKey String [not null]
+  publicKey String
+  webhookSecret String
+  environment String [not null, default: 'sandbox']
+  tenant_id String [unique, not null]
+  tenant Tenant [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 }
 
 Table TenantEmailConfig {
@@ -123,6 +142,10 @@ Table User {
   carts Cart [not null]
   purchases Sales [not null]
   payments Payments [not null]
+  auditLogs AuditLog [not null]
+  notifications Notification [not null]
+  pushTokens PushToken [not null]
+  preferences NotificationPreference
 
   indexes {
     (tenant_id, email) [unique]
@@ -290,12 +313,148 @@ Table Payments {
   amount Float [not null, default: 0]
   status PaymentStatus
   reference String
+  finecoreReference String
+  finecoreTransactionRef String
+  authType String
+  requiresAuth Boolean [not null, default: false]
   paidBy User [not null]
   user_id String [not null]
   paidTo Tenant [not null]
   tenant_id String [not null]
   paidFor Sales [not null]
   sales_id String [unique, not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Project {
+  id String [pk]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  name String [not null]
+  description String
+  status ProjectStatus [not null, default: 'ACTIVE']
+  settings Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table AuditLog {
+  id String [pk]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  user User
+  user_id String
+  action AuditAction [not null]
+  entityType AuditEntityType [not null]
+  entityId String
+  details Json
+  ipAddress String
+  userAgent String
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table TeamInvite {
+  id String [pk]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  email String [not null]
+  role Role [not null, default: 'USER']
+  token String [unique, not null]
+  invitedBy String [not null]
+  accepted Boolean [not null, default: false]
+  expiresAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (tenant_id, email) [unique]
+  }
+}
+
+Table TenantSettings {
+  id String [pk]
+  tenant Tenant [not null]
+  tenant_id String [unique, not null]
+  storeName String
+  storeLogo String
+  storeDescription String
+  contactEmail String
+  contactPhone String
+  address String
+  timezone String [not null, default: 'Africa/Lagos']
+  currency String [not null, default: 'NGN']
+  taxRate Float [not null, default: 0]
+  notificationPreferences Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table NotificationTemplate {
+  id String [pk]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  name String [not null]
+  type NotificationType [not null]
+  subject String
+  body String [not null]
+  variables Json
+  active Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (tenant_id, name) [unique]
+  }
+}
+
+Table Notification {
+  id String [pk]
+  tenant Tenant [not null]
+  tenant_id String [not null]
+  user User
+  user_id String
+  type NotificationType [not null]
+  priority NotificationPriority [not null, default: 'NORMAL']
+  title String [not null]
+  body String [not null]
+  data Json
+  status NotificationStatus [not null, default: 'PENDING']
+  sentAt DateTime
+  readAt DateTime
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table PushToken {
+  id String [pk]
+  user User [not null]
+  user_id String [not null]
+  token String [not null]
+  platform String [not null]
+  active Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (user_id, token) [unique]
+  }
+}
+
+Table NotificationPreference {
+  id String [pk]
+  user User [not null]
+  user_id String [unique, not null]
+  emailNotifications Boolean [not null, default: true]
+  pushNotifications Boolean [not null, default: true]
+  smsNotifications Boolean [not null, default: false]
+  inAppNotifications Boolean [not null, default: true]
+  notifyOnSale Boolean [not null, default: true]
+  notifyOnPayment Boolean [not null, default: true]
+  notifyOnLowStock Boolean [not null, default: true]
+  notifyOnNewUser Boolean [not null, default: true]
+  notifyOnCampaign Boolean [not null, default: true]
+  quietHoursStart String
+  quietHoursEnd String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
 }
@@ -386,6 +545,56 @@ Enum EmailSendStatus {
   FAILED
 }
 
+Enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+Enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  INVITE
+  REMOVE
+  TRANSFER
+}
+
+Enum AuditEntityType {
+  USER
+  PRODUCT
+  ORDER
+  PAYMENT
+  SETTINGS
+  TEAM
+  PROJECT
+}
+
+Enum NotificationType {
+  EMAIL
+  PUSH
+  SMS
+  IN_APP
+}
+
+Enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+Enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+Ref: TenantFinecoreConfig.tenant_id - Tenant.id
+
 Ref: TenantEmailConfig.tenant_id - Tenant.id
 
 Ref: Subscriber.tenant_id > Tenant.id
@@ -449,3 +658,23 @@ Ref: Payments.user_id > User.id
 Ref: Payments.tenant_id > Tenant.id
 
 Ref: Payments.sales_id - Sales.id
+
+Ref: Project.tenant_id > Tenant.id
+
+Ref: AuditLog.tenant_id > Tenant.id
+
+Ref: AuditLog.user_id > User.id
+
+Ref: TeamInvite.tenant_id > Tenant.id
+
+Ref: TenantSettings.tenant_id - Tenant.id
+
+Ref: NotificationTemplate.tenant_id > Tenant.id
+
+Ref: Notification.tenant_id > Tenant.id
+
+Ref: Notification.user_id > User.id
+
+Ref: PushToken.user_id > User.id
+
+Ref: NotificationPreference.user_id - User.id

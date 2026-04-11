@@ -1,5 +1,6 @@
 import { $Enums, Prisma } from "@prisma/client";
 import { createPagination } from "../../utils/pagination";
+import { SubscriberInput, CampaignInput } from "./subscribers-types";
 
 interface ListInput {
   tenant_id: string;
@@ -23,7 +24,7 @@ export class SubscriberService {
     this.prisma = prisma;
   }
 
-  async createSubscription(data: SubscriberInput) {
+  async createSubscription(data: any) {
     return await this.prisma.subscriber.create({
       data,
       include: { _count: true, lists: true, sends: true },
@@ -239,7 +240,7 @@ export class CampaignService {
     this.prisma = prisma;
   }
 
-  async createCampaign(data: CampaignInput) {
+  async createCampaign(data: any) {
     return await this.prisma.campaign.create({
       data,
       include: { _count: true, sends: true },
