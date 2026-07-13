@@ -251,5 +251,98 @@ export const SharedSchemas = {
         expiresAt: { type: "string", format: "date-time" },
       },
     },
+
+    Notification: {
+      $id: "notification",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        user_id: { type: "string", format: "uuid" },
+        type: { type: "string", enum: ["EMAIL", "PUSH", "SMS", "IN_APP"] },
+        priority: { type: "string", enum: ["LOW", "NORMAL", "HIGH", "URGENT"] },
+        title: { type: "string" },
+        body: { type: "string" },
+        data: { type: "object", additionalProperties: true },
+        read: { type: "boolean" },
+        createdAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    NotificationTemplate: {
+      $id: "notificationTemplate",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        name: { type: "string" },
+        type: { type: "string", enum: ["EMAIL", "PUSH", "SMS", "IN_APP"] },
+        subject: { type: "string" },
+        body: { type: "string" },
+        variables: { type: "array", items: { type: "string" } },
+        active: { type: "boolean" },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    AuditLog: {
+      $id: "auditLog",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        user_id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        action: { type: "string", enum: ["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "INVITE", "REMOVE", "TRANSFER"] },
+        entityType: { type: "string", enum: ["USER", "PRODUCT", "ORDER", "PAYMENT", "SETTINGS", "TEAM", "PROJECT"] },
+        entityId: { type: "string" },
+        metadata: { type: "object", additionalProperties: true },
+        createdAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    Settings: {
+      $id: "settings",
+      type: "object",
+      properties: {
+        storeName: { type: "string" },
+        storeLogo: { type: "string" },
+        storeDescription: { type: "string" },
+        contactEmail: { type: "string", format: "email" },
+        contactPhone: { type: "string" },
+        address: { type: "string" },
+        timezone: { type: "string" },
+        currency: { type: "string" },
+        taxRate: { type: "number" },
+        notificationPreferences: { type: "object", additionalProperties: true },
+      },
+    },
+
+    Invitation: {
+      $id: "invitation",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        tenant_id: { type: "string", format: "uuid" },
+        email: { type: "string", format: "email" },
+        role: { type: "string", enum: ["OWNER", "ADMIN", "USER"] },
+        token: { type: "string" },
+        status: { type: "string", enum: ["PENDING", "ACCEPTED", "EXPIRED", "CANCELLED"] },
+        expiresAt: { type: "string", format: "date-time" },
+        createdAt: { type: "string", format: "date-time" },
+      },
+    },
+
+    Project: {
+      $id: "project",
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        name: { type: "string" },
+        description: { type: "string", nullable: true },
+        settings: { type: "object", additionalProperties: true },
+        status: { type: "string", enum: ["ACTIVE", "ARCHIVED", "DELETED"] },
+        createdAt: { type: "string", format: "date-time" },
+        updatedAt: { type: "string", format: "date-time" },
+      },
+    },
   },
 };

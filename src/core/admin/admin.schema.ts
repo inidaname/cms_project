@@ -135,7 +135,7 @@ export const ProjectSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "project#" },
         },
       },
     },
@@ -159,7 +159,13 @@ export const ProjectSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "project#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -181,7 +187,7 @@ export const ProjectSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "project#" },
         },
       },
     },
@@ -282,7 +288,13 @@ export const TeamSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "user#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -304,7 +316,7 @@ export const TeamSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "user#" },
         },
       },
     },
@@ -419,7 +431,7 @@ export const TeamSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: { type: "array", items: { $ref: "invitation#" } },
         },
       },
     },
@@ -459,7 +471,13 @@ export const SubscriberSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "subscriber#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -483,7 +501,7 @@ export const SubscriberSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "subscriber#" },
         },
       },
     },
@@ -507,7 +525,13 @@ export const SubscriberSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              imported: { type: "integer" },
+              subscribers: { type: "array", items: { $ref: "subscriber#" } },
+            },
+          },
         },
       },
     },
@@ -574,7 +598,7 @@ export const ListSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: { type: "array", items: { $ref: "list#" } },
         },
       },
     },
@@ -597,7 +621,7 @@ export const ListSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "list#" },
         },
       },
     },
@@ -685,7 +709,13 @@ export const CampaignSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "campaign#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -710,7 +740,7 @@ export const CampaignSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "campaign#" },
         },
       },
     },
@@ -799,11 +829,21 @@ export const ProductSchemas = {
     security: [{ bearerAuth: [] }],
     response: {
       200: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          data: { type: "array" },
-        },
+        allOf: [
+          { $ref: "baseResponse#" },
+          {
+            type: "object",
+            properties: {
+              data: {
+                type: "object",
+                properties: {
+                  data: { type: "array", items: { $ref: "product#" } },
+                  metadata: { $ref: "paginationMetadata#" },
+                },
+              },
+            },
+          },
+        ],
       },
     },
   },
@@ -831,11 +871,10 @@ export const ProductSchemas = {
     },
     response: {
       201: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          data: { type: "object" },
-        },
+        allOf: [
+          { $ref: "baseResponse#" },
+          { type: "object", properties: { data: { $ref: "product#" } } },
+        ],
       },
     },
   },
@@ -862,11 +901,10 @@ export const ProductSchemas = {
     },
     response: {
       200: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          message: { type: "string" },
-        },
+        allOf: [
+          { $ref: "baseResponse#" },
+          { type: "object", properties: { data: { $ref: "product#" } } },
+        ],
       },
     },
   },
@@ -905,7 +943,13 @@ export const OrderSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "sales#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -956,11 +1000,10 @@ export const OrderSchemas = {
     },
     response: {
       200: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          data: { type: "object" },
-        },
+        allOf: [
+          { $ref: "baseResponse#" },
+          { type: "object", properties: { data: { $ref: "delivery#" } } },
+        ],
       },
     },
   },
@@ -977,7 +1020,13 @@ export const PaymentSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "payment#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -1018,7 +1067,7 @@ export const DiscountSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: { type: "array", items: { $ref: "discount#" } },
         },
       },
     },
@@ -1043,7 +1092,7 @@ export const DiscountSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "discount#" },
         },
       },
     },
@@ -1141,7 +1190,13 @@ export const NotificationSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "notification#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -1337,7 +1392,7 @@ export const TemplateSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: { type: "array", items: { $ref: "notificationTemplate#" } },
         },
       },
     },
@@ -1364,7 +1419,7 @@ export const TemplateSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "notificationTemplate#" },
         },
       },
     },
@@ -1522,7 +1577,13 @@ export const AuditLogSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "auditLog#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -1545,7 +1606,7 @@ export const AuditLogSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array" },
+          data: { type: "array", items: { $ref: "auditLog#" } },
         },
       },
     },
@@ -1592,7 +1653,7 @@ export const SettingsSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "settings#" },
         },
       },
     },
@@ -1623,7 +1684,7 @@ export const SettingsSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: { $ref: "settings#" },
         },
       },
     },
