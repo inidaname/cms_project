@@ -930,6 +930,182 @@ export const ProductSchemas = {
       },
     },
   },
+
+  getProductById: {
+    summary: "Get Product",
+    description: "Get a single product with variations and bundle components",
+    tags: ["Admin"],
+    security: [{ bearerAuth: [] }],
+    params: {
+      type: "object",
+      properties: {
+        product_id: { type: "string", format: "uuid" },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          data: { $ref: "product#" },
+        },
+      },
+    },
+  },
+
+  addVariation: {
+    summary: "Add Product Variation",
+    description: "Add a variation to a product",
+    tags: ["Admin"],
+    security: [{ bearerAuth: [] }],
+    body: {
+      type: "object",
+      required: ["product_id", "type", "value", "price"],
+      properties: {
+        product_id: { type: "string", format: "uuid" },
+        type: { type: "string", enum: ["Color", "Size", "Others"] },
+        value: { type: "string" },
+        price: { type: "number" },
+        quantity: { type: "number" },
+      },
+    },
+    response: {
+      201: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          data: { type: "object" },
+        },
+      },
+    },
+  },
+
+  updateVariation: {
+    summary: "Update Product Variation",
+    description: "Update a product variation",
+    tags: ["Admin"],
+    security: [{ bearerAuth: [] }],
+    body: {
+      type: "object",
+      required: ["variation_id"],
+      properties: {
+        variation_id: { type: "string", format: "uuid" },
+        type: { type: "string", enum: ["Color", "Size", "Others"] },
+        value: { type: "string" },
+        price: { type: "number" },
+        quantity: { type: "number" },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          message: { type: "string" },
+        },
+      },
+    },
+  },
+
+  deleteVariation: {
+    summary: "Delete Product Variation",
+    description: "Delete a product variation",
+    tags: ["Admin"],
+    security: [{ bearerAuth: [] }],
+    params: {
+      type: "object",
+      properties: {
+        variation_id: { type: "string", format: "uuid" },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          message: { type: "string" },
+        },
+      },
+    },
+  },
+
+  addToBundle: {
+    summary: "Add Components to Bundle",
+    description: "Add selectable components to a bundle product",
+    tags: ["Admin"],
+    security: [{ bearerAuth: [] }],
+    params: {
+      type: "object",
+      properties: {
+        product_id: { type: "string", format: "uuid" },
+      },
+    },
+    body: {
+      type: "object",
+      required: ["components"],
+      properties: {
+        components: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["child_id"],
+            properties: {
+              child_id: { type: "string", format: "uuid" },
+              additionalPrice: { type: "number", default: 0 },
+            },
+          },
+        },
+      },
+    },
+    response: {
+      201: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          data: { type: "object" },
+        },
+      },
+    },
+  },
+
+  editBundle: {
+    summary: "Edit Bundle Components",
+    description: "Update components of a bundle product",
+    tags: ["Admin"],
+    security: [{ bearerAuth: [] }],
+    params: {
+      type: "object",
+      properties: {
+        product_id: { type: "string", format: "uuid" },
+      },
+    },
+    body: {
+      type: "object",
+      required: ["components"],
+      properties: {
+        components: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              child_id: { type: "string", format: "uuid" },
+              additionalPrice: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          data: { type: "array" },
+        },
+      },
+    },
+  },
 };
 
 export const OrderSchemas = {

@@ -941,6 +941,75 @@ export const adminHandler = (app: FastifyInstance) => {
       }
     },
 
+    getProductById: async (request: any, reply: any) => {
+      if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
+      try {
+        const { product_id } = request.params;
+        const result = await adminService.manageProducts(request.tenant.id, "get", { id: product_id });
+        if (!result) {
+          return reply.status(404).send({ status: "error", message: "Product not found" });
+        }
+        return reply.status(200).send({ status: "success", data: result });
+      } catch (error: any) {
+        return reply.status(400).send({ status: "error", message: error.message });
+      }
+    },
+
+    addVariation: async (request: any, reply: any) => {
+      if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
+      try {
+        const result = await adminService.manageProducts(request.tenant.id, "add_variation", request.body);
+        return reply.status(201).send({ status: "success", data: result });
+      } catch (error: any) {
+        return reply.status(400).send({ status: "error", message: error.message });
+      }
+    },
+
+    updateVariation: async (request: any, reply: any) => {
+      if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
+      try {
+        await adminService.manageProducts(request.tenant.id, "update_variation", request.body);
+        return reply.status(200).send({ status: "success", message: "Variation updated" });
+      } catch (error: any) {
+        return reply.status(400).send({ status: "error", message: error.message });
+      }
+    },
+
+    deleteVariation: async (request: any, reply: any) => {
+      if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
+      try {
+        const { variation_id } = request.params;
+        await adminService.manageProducts(request.tenant.id, "delete_variation", { variation_id });
+        return reply.status(200).send({ status: "success", message: "Variation deleted" });
+      } catch (error: any) {
+        return reply.status(400).send({ status: "error", message: error.message });
+      }
+    },
+
+    addToBundle: async (request: any, reply: any) => {
+      if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
+      try {
+        const { product_id } = request.params;
+        const { components } = request.body;
+        const result = await adminService.manageProducts(request.tenant.id, "add_to_bundle", { product_id, components });
+        return reply.status(201).send({ status: "success", data: result });
+      } catch (error: any) {
+        return reply.status(400).send({ status: "error", message: error.message });
+      }
+    },
+
+    editBundle: async (request: any, reply: any) => {
+      if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
+      try {
+        const { product_id } = request.params;
+        const { components } = request.body;
+        const result = await adminService.manageProducts(request.tenant.id, "edit_bundle", { product_id, components });
+        return reply.status(200).send({ status: "success", data: result });
+      } catch (error: any) {
+        return reply.status(400).send({ status: "error", message: error.message });
+      }
+    },
+
     // Order Management
     listOrders: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });

@@ -62,9 +62,17 @@ const adminRoutes: PluginType = async (app) => {
   app.delete("/campaigns/:campaign_id", { schema: CampaignSchemas.deleteCampaign }, handler.deleteCampaign);
 
   app.get("/products", { schema: ProductSchemas.listProducts }, handler.listProducts);
+  app.get("/products/:product_id", { schema: ProductSchemas.getProductById }, handler.getProductById);
   app.post("/products", { schema: ProductSchemas.createProduct }, handler.createProduct);
   app.put("/products", { schema: ProductSchemas.updateProduct }, handler.updateProduct);
   app.delete("/products/:product_id", { schema: ProductSchemas.deleteProduct }, handler.deleteProduct);
+
+  app.post("/products/variation", { schema: ProductSchemas.addVariation }, handler.addVariation);
+  app.put("/products/variation", { schema: ProductSchemas.updateVariation }, handler.updateVariation);
+  app.delete("/products/variation/:variation_id", { schema: ProductSchemas.deleteVariation }, handler.deleteVariation);
+
+  app.post("/products/bundle/:product_id", { schema: ProductSchemas.addToBundle }, handler.addToBundle);
+  app.put("/products/bundle/:product_id", { schema: ProductSchemas.editBundle }, handler.editBundle);
 
   app.get("/orders", { schema: OrderSchemas.listOrders }, handler.listOrders);
   app.put("/orders/status", { schema: OrderSchemas.updateOrderStatus }, handler.updateOrderStatus);

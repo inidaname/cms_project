@@ -147,7 +147,9 @@ export class AdminService {
           select: { subscriberId: true },
         });
         const existingIds = new Set(existingSubs.map((s) => s.subscriberId));
-        const newSubs = data.subscriber_ids.filter((id: string) => !existingIds.has(id));
+        const newSubs = data.subscriber_ids.filter(
+          (id: string) => !existingIds.has(id),
+        );
         if (newSubs.length > 0) {
           await this.prisma.listSubscriber.createMany({
             data: newSubs.map((subscriberId: string) => ({
@@ -261,14 +263,20 @@ export class AdminService {
       case "list":
         return await this.prisma.product.findMany({
           where: { tenant_id },
-          include: { _count: { select: { cartItems: true, productVariations: true } } },
+          include: {
+            _count: { select: { cartItems: true, productVariations: true } },
+          },
           orderBy: { createdAt: "desc" },
         });
 
       case "get":
         return await this.prisma.product.findFirst({
           where: { id: data.id, tenant_id },
-          include: { productVariations: true, asComponent: true, bundleComponents: true },
+          include: {
+            productVariations: true,
+            asComponent: true,
+            bundleComponents: true,
+          },
         });
 
       case "create":
@@ -336,6 +344,33 @@ export class AdminService {
           where: { id: data.variation_id },
         });
 
+      case "add_to_bundle":
+        const bundleComponents = data.components.map((comp: any) => ({
+          parent_id: data.product_id,
+          child_id: comp.child_id,
+          additionalPrice: comp.additionalPrice || 0,
+        }));
+        return await this.prisma.productComponent.createMany({
+          data: bundleComponents,
+          skipDuplicates: true,
+        });
+
+      case "edit_bundle":
+        for (const comp of data.components) {
+          if (comp.id) {
+            await this.prisma.productComponent.update({
+              where: { id: comp.id },
+              data: {
+                additionalPrice: comp.additionalPrice,
+                child_id: comp.child_id,
+              },
+            });
+          }
+        }
+        return await this.prisma.productComponent.findMany({
+          where: { parent_id: data.product_id },
+        });
+
       default:
         throw new Error("Invalid product action");
     }
@@ -362,7 +397,11 @@ export class AdminService {
             paidBy: true,
             payments: true,
             delivery: true,
-            cart: { include: { cartItems: { include: { item: true, variation: true } } } },
+            cart: {
+              include: {
+                cartItems: { include: { item: true, variation: true } },
+              },
+            },
           },
         });
 
@@ -395,7 +434,7 @@ export class AdminService {
             data: {
               sales_id: data.id,
               tenant_id,
-              status: data.status || "PENDING" as any,
+              status: data.status || ("PENDING" as any),
               address: data.address || "",
               recipientName: data.recipientName || "",
               recipientPhone: data.recipientPhone || "",
@@ -489,93 +528,108 @@ export class AdminService {
   async getFullReport(tenant_id: string, startDate?: Date, endDate?: Date) {
     const where = {
       tenant_id,
-      ...(startDate || endDate ? {
-        createdAt: {
-          ...(startDate && { gte: startDate }),
-          ...(endDate && { lte: endDate }),
-        },
-      } : {}),
+      ...(startDate || endDate
+        ? {
+            createdAt: {
+              ...(startDate && { gte: startDate }),
+              ...(endDate && { lte: endDate }),
+            },
+          }
+        : {}),
     };
 
-    const [
-      salesData,
-      paymentData,
-      subscriberData,
-      productData,
-      cartData,
-    ] = await Promise.all([
-      this.prisma.sales.findMany({
-        where,
-        include: { paidBy: { select: { name: true, email: true } } },
-      }),
-      this.prisma.payments.findMany({
-        where,
-        include: { paidBy: { select: { email: true } } },
-      }),
-      this.prisma.subscriber.groupBy({
-        by: ["status"],
-        where: { tenant_id },
-        _count: true,
-      }),
-      this.prisma.product.groupBy({
-        by: ["status"],
-        where: { tenant_id },
-        _count: true,
-      }),
-      this.prisma.cart.groupBy({
-        by: ["status"],
-        where: { tenant_id },
-        _count: true,
-      }),
-    ]);
+    const [salesData, paymentData, subscriberData, productData, cartData] =
+      await Promise.all([
+        this.prisma.sales.findMany({
+          where,
+          include: { paidBy: { select: { name: true, email: true } } },
+        }),
+        this.prisma.payments.findMany({
+          where,
+          include: { paidBy: { select: { email: true } } },
+        }),
+        this.prisma.subscriber.groupBy({
+          by: ["status"],
+          where: { tenant_id },
+          _count: true,
+        }),
+        this.prisma.product.groupBy({
+          by: ["status"],
+          where: { tenant_id },
+          _count: true,
+        }),
+        this.prisma.cart.groupBy({
+          by: ["status"],
+          where: { tenant_id },
+          _count: true,
+        }),
+      ]);
 
     return {
       sales: {
         total: salesData.length,
-        byStatus: salesData.reduce((acc, s) => {
-          const status = s.status || "Unknown";
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
+        byStatus: salesData.reduce(
+          (acc, s) => {
+            const status = s.status || "Unknown";
+            acc[status] = (acc[status] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
         totalRevenue: salesData.reduce((sum, s) => sum + s.amount, 0),
       },
       payments: {
         total: paymentData.length,
-        byStatus: paymentData.reduce((acc, p) => {
-          acc[p.status || "Unknown"] = (acc[p.status || "Unknown"] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-        byChannel: paymentData.reduce((acc, p) => {
-          const channel = p.channel || "Unknown";
-          acc[channel] = (acc[channel] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
+        byStatus: paymentData.reduce(
+          (acc, p) => {
+            acc[p.status || "Unknown"] = (acc[p.status || "Unknown"] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
+        byChannel: paymentData.reduce(
+          (acc, p) => {
+            const channel = p.channel || "Unknown";
+            acc[channel] = (acc[channel] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
         totalProcessed: paymentData
           .filter((p) => p.status === "Success")
           .reduce((sum, p) => sum + p.amount, 0),
       },
       subscribers: {
         total: subscriberData.reduce((sum, s) => sum + s._count, 0),
-        byStatus: subscriberData.reduce((acc, s) => {
-          acc[s.status] = s._count;
-          return acc;
-        }, {} as Record<string, number>),
+        byStatus: subscriberData.reduce(
+          (acc, s) => {
+            acc[s.status] = s._count;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
       },
       products: {
         total: productData.reduce((sum, p) => sum + p._count, 0),
-        byStatus: productData.reduce((acc, p) => {
-          const status = p.status as string;
-          acc[status] = p._count;
-          return acc;
-        }, {} as Record<string, number>),
+        byStatus: productData.reduce(
+          (acc, p) => {
+            const status = p.status as string;
+            acc[status] = p._count;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
       },
       carts: {
         total: cartData.reduce((sum, c) => sum + c._count, 0),
-        byStatus: cartData.reduce((acc, c) => {
-          const status = c.status as string;
-          acc[status] = c._count;
-          return acc;
-        }, {} as Record<string, number>),
+        byStatus: cartData.reduce(
+          (acc, c) => {
+            const status = c.status as string;
+            acc[status] = c._count;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
       },
     };
   }
