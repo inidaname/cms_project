@@ -178,12 +178,7 @@ export const CartSchemas = {
       properties: { item_id: { type: "string", format: "uuid" } },
     },
     response: {
-      200: {
-        allOf: [
-          { $ref: "baseResponse#" },
-          { type: "object", properties: { data: { $ref: "cartItem#" } } },
-        ],
-      },
+      200: { $ref: "baseResponse#" },
     },
   },
   getItemById: {

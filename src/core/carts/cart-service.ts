@@ -18,6 +18,66 @@ export class CartService {
     });
   }
 
+  // Single source of truth for the cart total: sum of all line values,
+  // rounded to 2dp. Call right after the mutating statements.
+  async recalculateCartTotal(cart_id: string) {
+    const agg = await this.prisma.cartItems.aggregate({
+      where: { cart_id },
+      _sum: { value: true },
+    });
+
+    const total = Math.round((agg._sum.value ?? 0) * 100) / 100;
+
+    return await this.prisma.cart.update({
+      where: { id: cart_id },
+      data: { totalValue: total },
+      include: {
+        _count: true,
+        cartItems: true,
+        sales: true,
+        customer: true,
+        tenant: true,
+      },
+    });
+  }
+
+  private async resolveStock(
+    tenant_id: string,
+    product_id: string,
+    variation_id?: string | null
+  ): Promise<{ available: number | null }> {
+    if (variation_id) {
+      const variation = await this.prisma.productVariation.findFirst({
+        where: { id: variation_id, product: { id: product_id, tenant_id } },
+      });
+      return {
+        available:
+          variation?.quantity == null ? null : Number(variation.quantity),
+      };
+    }
+    const product = await this.prisma.product.findFirst({
+      where: { id: product_id, tenant_id },
+    });
+    return { available: product?.quantity == null ? null : Number(product.quantity) };
+  }
+
+  private async resolveStockMap(
+    tenant_id: string,
+    items: { product_id: string; variation_id?: string | null }[]
+  ) {
+    const map = new Map<string, { available: number | null }>();
+    for (const item of items) {
+      const key = `${item.product_id}:${item.variation_id ?? ""}`;
+      if (!map.has(key)) {
+        map.set(
+          key,
+          await this.resolveStock(tenant_id, item.product_id, item.variation_id)
+        );
+      }
+    }
+    return map;
+  }
+
   async createCart(data: Omit<CartsInput, "status">) {
     return (
       (await this.getActiveCart(data.user_id, data.tenant_id)) ||
@@ -170,7 +230,7 @@ export class CartService {
     id: string,
     user_id: string,
     tenant_id: string,
-    data: Pick<Partial<CartsInput>, "status" | "totalValue">
+    data: Pick<Partial<CartsInput>, "status">
   ) {
     return await this.prisma.cart.update({
       where: { id, tenant_id, user_id },
@@ -263,16 +323,16 @@ export class CartService {
         })
       : [];
     const variationPrice = new Map(
-      variations.map((v) => [v.id, v.price])
+      variations.map((v) => [v.id, Number(v.price)])
     );
     const productPrice = new Map(
-      tenantProducts.map((p) => [p.id, p.price])
+      tenantProducts.map((p) => [p.id, Number(p.price)])
     );
 
     // Only cart-item columns; strip client-only payloads like `selections`.
     const normalizedItems = data.map((item) => {
       const quantity = Number(item.product_quantity) || 0;
-      const unitPrice = Number(
+      const unitPrice: number = Number(
         (item.variation_id && variationPrice.get(item.variation_id)) ??
           productPrice.get(item.product_id) ??
           0
@@ -286,12 +346,9 @@ export class CartService {
       };
     });
 
-    const totalValue = normalizedItems.reduce(
-      (sum, item) => sum + item.value,
-      0
-    );
-
     let existingCart: any = null;
+
+    const stockByProduct = await this.resolveStockMap(tenant_id, normalizedItems);
 
     if (cart_id) {
       existingCart = await this.getCartById(cart_id, tenant_id);
@@ -302,7 +359,7 @@ export class CartService {
         ? await this.createCart({
             tenant_id,
             user_id,
-            totalValue,
+            totalValue: 0,
             deliveryAddress: "",
             deliveryType: "DELIVERY",
             notes: "",
@@ -311,20 +368,66 @@ export class CartService {
           })
         : existingCart;
 
-    return this.prisma.cart.update({
-      where: { id: cart.id },
-      data: {
-        totalValue: { increment: totalValue },
-        cartItems: { create: normalizedItems as any },
-      },
-      include: {
-        _count: true,
-        cartItems: true,
-        sales: true,
-        customer: true,
-        tenant: true,
-      },
-    });
+    // NOTE: interactive transactions are unreliable under the Neon serverless
+    // driver (P2028s under load), so mutations run sequentially and the total
+    // is always recomputed last from the line items — self-healing.
+    for (const item of normalizedItems) {
+      if (item.product_quantity <= 0) {
+        continue;
+      }
+
+      const stock = stockByProduct.get(`${item.product_id}:${item.variation_id ?? ""}`);
+
+      const existingLine = await this.prisma.cartItems.findFirst({
+        where: {
+          cart_id: cart.id,
+          product_id: item.product_id,
+          variation_id: item.variation_id ?? null,
+        },
+      });
+
+      const existingQty = existingLine
+        ? Number(existingLine.product_quantity)
+        : 0;
+      const requestedQty = existingQty + item.product_quantity;
+
+      if (stock?.available != null && requestedQty > stock.available) {
+        throw {
+          statusCode: 400,
+          status: "error",
+          message:
+            stock.available === 0
+              ? "This item is out of stock"
+              : `Only ${stock.available} of this item in stock`,
+        };
+      }
+
+      if (existingLine) {
+        // Merge: bump the existing line instead of duplicating
+        const mergedQty = requestedQty;
+        await this.prisma.cartItems.update({
+          where: { id: existingLine.id },
+          data: {
+            product_quantity: mergedQty,
+            unit_price: Number(item.unit_price),
+            value: mergedQty * Number(item.unit_price),
+          },
+        });
+      } else {
+        await this.prisma.cartItems.create({
+          data: {
+            cart_id: cart.id,
+            product_id: item.product_id! as string,
+            variation_id: (item.variation_id ?? null) as string | null,
+            product_quantity: Number(item.product_quantity),
+            unit_price: Number(item.unit_price ?? 0),
+            value: Number(item.value ?? 0),
+          },
+        });
+      }
+    }
+
+    return await this.recalculateCartTotal(cart.id);
   }
 
   async getItemById(id: string, tenant_id: string, user_id?: string) {
@@ -350,25 +453,59 @@ export class CartService {
     if (quantity === 0) {
       return await this.removeItemsFromCart(user_id, tenant_id, id);
     }
+
     const item = await this.getItemById(id, tenant_id, user_id);
 
     if (!item) {
-      throw {};
+      throw {
+        statusCode: 404,
+        status: "error",
+        message: "Cart item not found",
+      };
     }
 
-    const newCartTotal = item.cart.totalValue - item.value;
+    if (item.cart.status === "Checkedout") {
+      throw {
+        statusCode: 400,
+        status: "error",
+        message: "Cannot edit a checked-out cart",
+      };
+    }
 
-    const newItemTotal = item.item.price * quantity;
+    // Stock cap on the new quantity (variation stock when line has a variation)
+    const { available } = await this.resolveStock(
+      tenant_id,
+      item.product_id,
+      item.variation_id
+    );
 
-    return await this.prisma.cartItems.update({
+    if (available != null && quantity > available) {
+      throw {
+        statusCode: 400,
+        status: "error",
+        message:
+          available === 0
+            ? "This item is out of stock"
+            : `Only ${available} of this item in stock`,
+      };
+    }
+
+    const variationPrice =
+      item.variation_id && item.variation ? Number(item.variation.price) : null;
+    const unitPrice =
+      variationPrice ?? Number(item.item.price ?? 0);
+    const value = quantity * unitPrice;
+
+    await this.prisma.cartItems.update({
       where: { id, cart: { user_id, tenant_id } },
       data: {
-        cart: { update: { totalValue: newCartTotal + newItemTotal } },
         product_quantity: quantity,
-        value: newItemTotal,
-        unit_price: item.item.price,
+        value,
+        unit_price: unitPrice,
       },
     });
+
+    return await this.recalculateCartTotal(item.cart_id);
   }
 
   async getCartItems(cart_id: string, tenant_id: string) {
@@ -396,17 +533,16 @@ export class CartService {
       return;
     }
 
-    const [_, deletedItem] = await this.prisma.$transaction([
-      this.prisma.cartItems.update({
-        where: {
-          id: itemId,
-          cart: { user_id, tenant_id, status: { not: "Checkedout" } },
-        },
-        data: { cart: { update: { totalValue: { decrement: item.value } } } },
-      }),
-      this.prisma.cartItems.delete({ where: { id: itemId } }),
-    ]);
+    if (item.cart.status === "Checkedout") {
+      throw {
+        statusCode: 400,
+        status: "error",
+        message: "Cannot edit a checked-out cart",
+      };
+    }
 
-    return deletedItem;
+    await this.prisma.cartItems.delete({ where: { id: itemId } });
+
+    return await this.recalculateCartTotal(item.cart_id);
   }
 }

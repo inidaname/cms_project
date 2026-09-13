@@ -8,9 +8,14 @@ const rawBodyPlugin: PluginType = async (fastify) => {
     { parseAs: "buffer" },
     (req, body, done) => {
       try {
-        (req as any).rawBody = body.toString();
-        const json = JSON.parse(body.toString());
-        done(null, json);
+        const text = body.toString();
+        (req as any).rawBody = text;
+        // Empty body (POST/DELETE with no payload) → null
+        if (!text.trim()) {
+          done(null, undefined);
+          return;
+        }
+        done(null, JSON.parse(text));
       } catch (err) {
         done(err as Error, undefined);
       }

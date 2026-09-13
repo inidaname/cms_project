@@ -174,7 +174,7 @@ export const cartsHandler: CartsHandler = (app) => {
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_UPDATED,
         code: CASSuccessCode.DATA_UPDATED,
-        data: item,
+        data: item as any,
         status: "success",
       });
     },
@@ -187,12 +187,13 @@ export const cartsHandler: CartsHandler = (app) => {
         params: { cart_id },
       } = request;
 
-      const items = await service.getCartItems(cart_id, tenant_id);
+      // Schema declares data: cart# (cart with cartItems included)
+      const cart = await service.getCartById(cart_id, tenant_id);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_RETRIEVED,
         code: CASSuccessCode.DATA_RETRIEVED,
-        data: items,
+        data: cart as any,
         status: "success",
       });
     },
@@ -250,7 +251,7 @@ export const cartsHandler: CartsHandler = (app) => {
       const item = await service.removeItemsFromCart(id, tenant_id, item_id);
 
       return reply.status(StatusCode.SuccessOK).send({
-        data: item!,
+        data: item as any,
         status: "success",
         code: CASSuccessCode.DATA_DELETED,
         message: CASSuccessMessage.DATA_DELETED,
