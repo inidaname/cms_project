@@ -239,25 +239,54 @@ export class CartService {
     data: Omit<CartItemsInput, "cart_id" | "value">[],
     cart_id?: string
   ) {
-    const productChecks = await Promise.all(
-      data.map((item) =>
-        this.products.isTenantProduct(tenant_id, item.product_id)
-      )
-    );
+    const productIds = [...new Set(data.map((item) => item.product_id))];
+    const tenantProducts = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, tenant_id },
+    });
 
-    const hasValidTenantProduct = productChecks.some((result) => result);
+    const validIds = new Set(tenantProducts.map((p) => p.id));
+    const hasValidTenantProduct = data.some((item) =>
+      validIds.has(item.product_id)
+    );
 
     if (!hasValidTenantProduct) {
       throw new Error("Invalid product for tenant");
     }
 
-    // Compute item values
-    const itemsWithComputedValue = data.map((item) => ({
-      ...item,
-      value: item.product_quantity * item.unit_price,
-    }));
+    // Resolve unit prices (product price, or the selected variation's price)
+    const variationIds = data
+      .map((item) => item.variation_id)
+      .filter((id): id is string => Boolean(id));
+    const variations = variationIds.length
+      ? await this.prisma.productVariation.findMany({
+          where: { id: { in: variationIds } },
+        })
+      : [];
+    const variationPrice = new Map(
+      variations.map((v) => [v.id, v.price])
+    );
+    const productPrice = new Map(
+      tenantProducts.map((p) => [p.id, p.price])
+    );
 
-    const totalValue = itemsWithComputedValue.reduce(
+    // Only cart-item columns; strip client-only payloads like `selections`.
+    const normalizedItems = data.map((item) => {
+      const quantity = Number(item.product_quantity) || 0;
+      const unitPrice = Number(
+        (item.variation_id && variationPrice.get(item.variation_id)) ??
+          productPrice.get(item.product_id) ??
+          0
+      );
+      return {
+        product_id: item.product_id,
+        variation_id: item.variation_id ?? null,
+        product_quantity: quantity,
+        unit_price: unitPrice,
+        value: quantity * unitPrice,
+      };
+    });
+
+    const totalValue = normalizedItems.reduce(
       (sum, item) => sum + item.value,
       0
     );
@@ -285,9 +314,8 @@ export class CartService {
     return this.prisma.cart.update({
       where: { id: cart.id },
       data: {
-        totalValue:
-          cart.totalValue < totalValue ? { increment: totalValue } : totalValue,
-        cartItems: { create: data },
+        totalValue: { increment: totalValue },
+        cartItems: { create: normalizedItems as any },
       },
       include: {
         _count: true,

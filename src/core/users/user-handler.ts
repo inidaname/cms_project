@@ -61,8 +61,8 @@ export const userHandler: UserHandler = (app) => {
       return reply.status(StatusCode.SuccessOK).send({
         data: user,
         status: "success",
-        code: CASSuccessCode.DATA_DELETED,
-        message: CASSuccessMessage.DATA_DELETED,
+        code: CASSuccessCode.DATA_RETRIEVED,
+        message: CASSuccessMessage.DATA_RETRIEVED,
       });
     },
 
@@ -86,8 +86,8 @@ export const userHandler: UserHandler = (app) => {
       return reply.status(StatusCode.SuccessOK).send({
         data: users,
         status: "success",
-        code: CASSuccessCode.DATA_DELETED,
-        message: CASSuccessMessage.DATA_DELETED,
+        code: CASSuccessCode.DATA_RETRIEVED,
+        message: CASSuccessMessage.DATA_RETRIEVED,
       });
     },
 
@@ -111,8 +111,8 @@ export const userHandler: UserHandler = (app) => {
       return reply.status(StatusCode.SuccessOK).send({
         data: update,
         status: "success",
-        code: CASSuccessCode.DATA_DELETED,
-        message: CASSuccessMessage.DATA_DELETED,
+        code: CASSuccessCode.DATA_UPDATED,
+        message: CASSuccessMessage.DATA_UPDATED,
       });
     },
   };

@@ -7,39 +7,59 @@ export class SalesService {
     this.prisma = prisma;
   }
 
-  async isCartActive(cart_id: string, tenant_id: string, user_id: string) {
-    const record = await this.prisma.sales.findFirst({
-      where: { cart_id, cart: { tenant_id, user_id, status: "Active" } },
-    });
-
-    return record !== null;
+  async findSaleByCart(cart_id: string, tenant_id: string) {
+    return this.prisma.sales.findUnique({ where: { cart_id } });
   }
 
-  async checkout(data: SalesInput) {
-    const check = await this.isCartActive(
-      data.cart_id,
-      data.tenant_id,
-      data.user_id,
-    );
-    if (!check) {
-      throw {};
-    }
-    const sales = await this.prisma.cart.update({
-      where: { id: data.cart_id },
-      data: {
-        sales: {
-          create: { ...data },
-          update: { amount: data.amount, status: data.status },
-        },
+  async checkout(data: {
+    cart_id: string;
+    tenant_id: string;
+    user_id: string;
+  }) {
+    const cart = await this.prisma.cart.findFirst({
+      where: {
+        id: data.cart_id,
+        tenant: { id: data.tenant_id },
+        user_id: data.user_id,
+        status: "Active",
       },
-      select: { sales: { select: { id: true } } },
+      include: { sales: true, cartItems: true },
     });
 
-    return await this.getCheckoutById(
-      sales.sales?.id,
-      data.tenant_id,
-      data.user_id,
-    );
+    if (!cart) {
+      throw {
+        statusCode: 404,
+        message: "Cart not found or not active",
+        status: "error",
+      };
+    }
+
+    if (cart.sales) {
+      throw {
+        statusCode: 409,
+        message: "This cart has already been checked out",
+        status: "error",
+      };
+    }
+
+    if (!cart.cartItems?.length) {
+      throw {
+        statusCode: 400,
+        message: "Cannot checkout an empty cart",
+        status: "error",
+      };
+    }
+
+    const sales = await this.prisma.sales.create({
+      data: {
+        cart_id: cart.id,
+        tenant_id: data.tenant_id,
+        user_id: data.user_id,
+        amount: cart.totalValue,
+      },
+    });
+
+    return sales;
   }
 
   async getCheckoutById(
@@ -58,9 +78,22 @@ export class SalesService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.sales.findMany({
         where: { tenant_id, ...(user_id && { user_id }) },
+        include: {
+          cart: { include: { cartItems: true } },
+          payments: true,
+          paidBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              createdAt: true,
+            },
+          },
+        },
         skip,
         take: limit,
-        include: { cart: true, paidBy: true, payments: true, tenant: true },
+        orderBy: { createdAt: "desc" },
       }),
       this.prisma.sales.count({
         where: { tenant_id, ...(user_id && { user_id }) },

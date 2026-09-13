@@ -48,7 +48,10 @@ export const cartsHandler: CartsHandler = (app) => {
       const { id: tenant_id } = request.tenant;
       const { id } = request.user;
       const { cart_id } = request.params;
-      const body = request.body;
+      // Clients may send a single item object or an array; normalize.
+      const body = Array.isArray(request.body)
+        ? request.body
+        : [request.body];
 
       const addedItems = await service.addItemToCart(
         id,
@@ -75,7 +78,7 @@ export const cartsHandler: CartsHandler = (app) => {
 
       const deleteCart = await service.deleteCart(cart_id, tenant_id, id);
 
-      return reply.status(StatusCode.SuccessResetContent).send({
+      return reply.status(StatusCode.SuccessOK).send({
         code: CASSuccessCode.DATA_DELETED,
         message: CASSuccessMessage.DATA_DELETED,
         data: deleteCart,
@@ -118,7 +121,7 @@ export const cartsHandler: CartsHandler = (app) => {
 
       const cart = await service.editCart(cart_id!, id, tenant_id, body);
 
-      return reply.status(StatusCode.SuccessResetContent).send({
+      return reply.status(StatusCode.SuccessOK).send({
         data: cart,
         message: CASSuccessMessage.DATA_UPDATED,
         code: CASSuccessCode.DATA_UPDATED,
@@ -154,21 +157,21 @@ export const cartsHandler: CartsHandler = (app) => {
         tenant: { id: tenant_id },
         params: { item_id },
         user: { id },
-        body: { quantity },
+        body: { product_quantity },
       } = request;
 
       const item = await service.editItemQuantity(
         item_id,
         id,
         tenant_id,
-        Number.parseInt(quantity)
+        product_quantity
       );
 
       if (!item) {
         throw {};
       }
 
-      return reply.status(StatusCode.SuccessResetContent).send({
+      return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_UPDATED,
         code: CASSuccessCode.DATA_UPDATED,
         data: item,
@@ -198,10 +201,12 @@ export const cartsHandler: CartsHandler = (app) => {
         throw {};
       }
       const {
-        query: { filter, limit, page },
         tenant: { id: tenant_id },
         user: { id },
       } = request;
+      const page = Number(request.query?.page) || undefined;
+      const limit = Number(request.query?.limit) || undefined;
+      const filter = request.query?.filter;
 
       const carts = await service.getCarts(tenant_id, page, limit, filter, id);
 

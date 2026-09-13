@@ -112,7 +112,12 @@ export const authHandler: Authhandler = (app) => {
         user_id: stored.user_id,
       });
 
-      return reply.status(StatusCode.SuccessOK);
+      return reply.status(StatusCode.SuccessOK).send({
+        status: "success",
+        data: null,
+        message: CASSuccessMessage.OPERATION_SUCCESSFUL,
+        code: CASSuccessCode.OPERATION_SUCCESSFUL,
+      });
     },
     forgotPassword: async (request, reply) => {
       const { id } = request.tenant!;

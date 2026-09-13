@@ -4,7 +4,6 @@ import StatusCode from "status-code-enum";
 interface RateLimitOptions {
   max?: number;
   timeWindow?: number;
-  keyGenerator?: (request: any) => string;
 }
 
 interface RateLimitInfo {
@@ -25,28 +24,19 @@ const DEFAULT_TIME_WINDOW = 60;
 
 const rateLimitPlugin = fp(
   async (fastify: any, opts?: RateLimitOptions) => {
-    const keyGenerator =
-      opts?.keyGenerator ||
-      ((request: any) => {
-        const apiKey = request.headers["x-api-key"];
-        const userId = request.user?.id;
-        const ip =
-          request.headers["x-forwarded-for"] ||
-          request.ip ||
-          "unknown";
-
-        if (apiKey) return `apikey:${apiKey}`;
-        if (userId) return `user:${userId}`;
-        return `ip:${ip}`;
-      });
-
     fastify.addHook("preHandler", async (request: any, reply: any) => {
       const isAdminRoute = (request.raw.url ?? "").startsWith("/admin");
       const isAdmin = ["OWNER", "ADMIN"].includes(request.user?.role);
       const max = isAdminRoute && isAdmin ? ADMIN_MAX : opts?.max || DEFAULT_MAX;
       const timeWindow = opts?.timeWindow || DEFAULT_TIME_WINDOW;
 
-      const key = keyGenerator(request);
+      // Authenticated storefront/admin users get their own budget so a busy
+      // tenant's API key does not throttle everyone.
+      const userId = request.user?.id;
+      const apiKey = request.headers["x-api-key"];
+      const ip =
+        request.headers["x-forwarded-for"] || request.ip || "unknown";
+      const key = userId ? `user:${userId}` : apiKey ? `apikey:${apiKey}` : `ip:${ip}`;
       const rateLimitKey = `ratelimit:${key}`;
 
       let current: number;

@@ -18,8 +18,6 @@ const jwtPlugin = fp(async (fastify, options) => {
 
   fastify.decorate("authenticate", async (request, reply) => {
     try {
-      const authHeader = request.headers.authorization;
-      console.log("Authorization Header:", authHeader);
       await request.jwtVerify();
     } catch (err) {
       reply.status(StatusCode.ClientErrorUnauthorized).send({

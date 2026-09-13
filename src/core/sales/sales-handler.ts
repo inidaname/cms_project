@@ -34,7 +34,7 @@ export const salesHandler: SalesHandler = (app) => {
 
       const sale = await service.getCheckoutById(checkout_id, tenant_id, id);
 
-      return reply.status(StatusCode.SuccessCreated).send({
+      return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_RETRIEVED,
         code: CASSuccessCode.DATA_RETRIEVED,
         status: "success",
@@ -54,7 +54,7 @@ export const salesHandler: SalesHandler = (app) => {
 
       const sales = await service.getAllSales(tenant_id, page, limit, id);
 
-      return reply.status(StatusCode.SuccessCreated).send({
+      return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_RETRIEVED,
         code: CASSuccessCode.DATA_RETRIEVED,
         status: "success",

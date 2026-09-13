@@ -42,7 +42,7 @@ export const tenantHandler: TenantHandler = (app) => {
 
       const tenant = await service.editTenant(tenant_id, request.body);
 
-      return reply.status(StatusCode.SuccessResetContent).send({
+      return reply.status(StatusCode.SuccessOK).send({
         status: "success",
         code: CASSuccessCode.DATA_UPDATED,
         data: tenant,

@@ -32,7 +32,7 @@ type CartsHandler = (app: FastifyInstance) => {
   >;
   getItmeById: Handler<void, CartItems, { item_id: string }>;
   editItemQuantity: Handler<
-    { quantity: string },
+    { product_quantity: number },
     CartItems,
     { item_id: string }
   >;
