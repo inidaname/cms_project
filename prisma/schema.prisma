@@ -392,10 +392,12 @@ enum Role {
   OWNER
   ADMIN
   USER
+  SUPER_ADMIN
 }
 
 enum TenantStatus {
   ACTIVE
+  SUSPENDED
   EXPIRED
   DELETED
   OUTDATED

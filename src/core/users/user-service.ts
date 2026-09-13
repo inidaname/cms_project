@@ -47,6 +47,10 @@ export class UserService {
     return await this.prisma.user.findUnique({ where: { id, tenant_id } });
   }
 
+  async getUserByIdOnly(id: string) {
+    return await this.prisma.user.findUnique({ where: { id } });
+  }
+
   async updateUser(data: Omit<UserInput, "agreed">, id: string) {
     return await this.prisma.user.update({ where: { id }, data });
   }

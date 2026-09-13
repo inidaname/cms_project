@@ -9,7 +9,6 @@ import {
   CASSuccessMessage,
 } from "../../utils/enums";
 import { sendTenantWelcomeEmail } from "../../helpers/content";
-
 export const tenantHandler: TenantHandler = (app) => {
   const service = new TenantService(app.prisma);
   const userService = new UserService(app.prisma);
@@ -95,6 +94,85 @@ export const tenantHandler: TenantHandler = (app) => {
         code: CASSuccessCode.DATA_CREATED,
         data: tenant,
         message: CASSuccessMessage.DATA_CREATED,
+      });
+    },
+    onboardTenant: async (request, reply) => {
+      const { storeName, email, password, domain, name, phone } = request.body;
+
+      const normalizedDomain = (domain ?? storeName)
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const existingTenant = await service.findTenantByDomain(normalizedDomain);
+
+      if (existingTenant) {
+        throw {
+          status: "error",
+          message: "A store with this domain already exists",
+          code: CASErrorCode.DUPLICATE_FIELD,
+          statusCode: StatusCode.ClientErrorBadRequest,
+        };
+      }
+
+      const tenant = await service.createTenant({
+        name: storeName,
+        domain: normalizedDomain,
+        apiKey: `cas_key_${generateApiKey()}`,
+        status: "ACTIVE",
+      } as TenantInput);
+
+      const hashedPassword = await app.bcrypt.hash(password, 10);
+
+      const user = await userService.createUser({
+        agreed: true,
+        email,
+        name: name ?? storeName,
+        phone: phone ?? null,
+        password: hashedPassword,
+        role: "OWNER",
+        tenant_id: tenant.id,
+      } as UserInput);
+
+      await sendTenantWelcomeEmail({
+        apiKey: tenant.apiKey,
+        domain: tenant.domain,
+        email: user.email,
+        name: user.name ?? "",
+        tenantName: tenant.name,
+      });
+
+      const accessToken = app.jwt.sign({
+        id: user.id,
+        userType: "User",
+        tenant_id: tenant.id,
+        role: user.role,
+      });
+
+      const refreshToken = app.jwt.sign(
+        {
+          id: user.id,
+          userType: "refresh_token",
+        },
+        { expiresIn: "7d" },
+      );
+
+      return reply.status(StatusCode.SuccessCreated).send({
+        status: "success",
+        code: CASSuccessCode.DATA_CREATED,
+        message: CASSuccessMessage.DATA_CREATED,
+        data: {
+          tenant: {
+            id: tenant.id,
+            name: tenant.name,
+            domain: tenant.domain,
+            apiKey: tenant.apiKey,
+          },
+          user,
+          accessToken,
+          refreshToken,
+        },
       });
     },
   };

@@ -824,9 +824,17 @@ export const CampaignSchemas = {
 export const ProductSchemas = {
   listProducts: {
     summary: "List Products",
-    description: "Get all products",
+    description: "Get all products with pagination and search",
     tags: ["Admin"],
     security: [{ bearerAuth: [] }],
+    querystring: {
+      type: "object",
+      properties: {
+        page: { type: "integer", minimum: 1, default: 1 },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 10 },
+        search: { type: "string" },
+      },
+    },
     response: {
       200: {
         allOf: [

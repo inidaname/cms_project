@@ -904,7 +904,12 @@ export const adminHandler = (app: FastifyInstance) => {
     listProducts: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
-        const result = await adminService.manageProducts(request.tenant.id, "list");
+        const { page, limit, search } = request.query ?? {};
+        const result = await adminService.manageProducts(request.tenant.id, "list", {
+          page: page ? Number(page) : undefined,
+          limit: limit ? Number(limit) : undefined,
+          search,
+        });
         return reply.status(200).send({ status: "success", data: result });
       } catch (error: any) {
         return reply.status(400).send({ status: "error", message: error.message });
@@ -934,7 +939,8 @@ export const adminHandler = (app: FastifyInstance) => {
     deleteProduct: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
-        await adminService.manageProducts(request.tenant.id, "delete", request.body);
+        const { product_id } = request.params;
+        await adminService.manageProducts(request.tenant.id, "delete", { id: product_id });
         return reply.status(200).send({ status: "success", message: "Product deleted" });
       } catch (error: any) {
         return reply.status(400).send({ status: "error", message: error.message });

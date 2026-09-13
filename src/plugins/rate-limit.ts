@@ -20,12 +20,11 @@ declare module "fastify" {
 }
 
 const DEFAULT_MAX = 100;
+const ADMIN_MAX = 300;
 const DEFAULT_TIME_WINDOW = 60;
 
 const rateLimitPlugin = fp(
   async (fastify: any, opts?: RateLimitOptions) => {
-    const max = opts?.max || DEFAULT_MAX;
-    const timeWindow = opts?.timeWindow || DEFAULT_TIME_WINDOW;
     const keyGenerator =
       opts?.keyGenerator ||
       ((request: any) => {
@@ -42,6 +41,11 @@ const rateLimitPlugin = fp(
       });
 
     fastify.addHook("preHandler", async (request: any, reply: any) => {
+      const isAdminRoute = (request.raw.url ?? "").startsWith("/admin");
+      const isAdmin = ["OWNER", "ADMIN"].includes(request.user?.role);
+      const max = isAdminRoute && isAdmin ? ADMIN_MAX : opts?.max || DEFAULT_MAX;
+      const timeWindow = opts?.timeWindow || DEFAULT_TIME_WINDOW;
+
       const key = keyGenerator(request);
       const rateLimitKey = `ratelimit:${key}`;
 

@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import StatusCode from "status-code-enum";
-import { CASErrorCode } from "../utils/enums";
+import { CASErrorCode, CASErrorMessage } from "../utils/enums";
 
 const PUBLIC_ROUTES = [
   "/docs",
@@ -9,10 +9,14 @@ const PUBLIC_ROUTES = [
   "/ping",
   "/documentation",
   "/webhook",
+  "/tenants/onboard",
+  "/super-admin/login",
+  "/super-admin/refresh-token",
   "/admin/team/invite/accept",
 ];
 
 const ADMIN_ROUTES_PREFIX = "/admin";
+const SUPER_ADMIN_ROUTES_PREFIX = "/super-admin";
 
 const tenantResolver: PluginType = async (fastify) => {
   fastify.decorateRequest("tenant", null as any);
@@ -21,6 +25,39 @@ const tenantResolver: PluginType = async (fastify) => {
     const url = req.raw.url ?? "";
 
     if (PUBLIC_ROUTES.some((route) => url.startsWith(route))) {
+      return;
+    }
+
+    if (url.startsWith(SUPER_ADMIN_ROUTES_PREFIX)) {
+      const authHeader = req.headers["authorization"] as string | undefined;
+      if (!authHeader?.startsWith("Bearer ")) {
+        return reply.status(StatusCode.ClientErrorUnauthorized).send({
+          message: CASErrorMessage.UNAUTHORIZED_ACCESS,
+          code: CASErrorCode.UNAUTHORIZED_ACCESS,
+          status: "error",
+        });
+      }
+
+      try {
+        const decoded = fastify.jwt.verify(authHeader.substring(7)) as any;
+
+        if (decoded.role !== "SUPER_ADMIN") {
+          return reply.status(StatusCode.ClientErrorForbidden).send({
+            message: "Super admin access required",
+            code: CASErrorCode.FORBIDDEN,
+            status: "error",
+          });
+        }
+
+        req.user = decoded;
+      } catch (error) {
+        return reply.status(StatusCode.ClientErrorUnauthorized).send({
+          message: "Invalid or expired token",
+          code: CASErrorCode.UNAUTHORIZED_ACCESS,
+          status: "error",
+        });
+      }
+
       return;
     }
 
@@ -51,6 +88,14 @@ const tenantResolver: PluginType = async (fastify) => {
     }
 
     req.tenant = tenant;
+
+    if (tenant.status === "SUSPENDED" || tenant.status === "DELETED" || tenant.status === "ABANDONED") {
+      return reply.status(StatusCode.ClientErrorForbidden).send({
+        message: `This store is currently ${tenant.status.toLowerCase()}. Contact the platform operator.`,
+        code: CASErrorCode.FORBIDDEN,
+        status: "error",
+      });
+    }
 
     if (url.startsWith(ADMIN_ROUTES_PREFIX)) {
       const authHeader = req.headers["authorization"] as string | undefined;

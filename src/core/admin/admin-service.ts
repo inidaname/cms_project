@@ -1,3 +1,5 @@
+import { createPagination } from "../../utils/pagination";
+
 export class AdminService {
   prisma: PrismaClientType;
 
@@ -260,14 +262,34 @@ export class AdminService {
 
   async manageProducts(tenant_id: string, action: string, data?: any) {
     switch (action) {
-      case "list":
-        return await this.prisma.product.findMany({
-          where: { tenant_id },
-          include: {
-            _count: { select: { cartItems: true, productVariations: true } },
-          },
-          orderBy: { createdAt: "desc" },
-        });
+      case "list": {
+        const page = data?.page ?? 1;
+        const limit = data?.limit ?? 10;
+        const search = data?.search;
+        const where: any = { tenant_id };
+        if (search) {
+          where.OR = [
+            { title: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+          ];
+        }
+        const [products, total] = await this.prisma.$transaction([
+          this.prisma.product.findMany({
+            where,
+            include: {
+              _count: { select: { cartItems: true, productVariations: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+          this.prisma.product.count({ where }),
+        ]);
+        return {
+          data: products,
+          metadata: createPagination(total, page, limit),
+        };
+      }
 
       case "get":
         return await this.prisma.product.findFirst({
@@ -284,7 +306,7 @@ export class AdminService {
           data: {
             tenant_id,
             title: data.title,
-            description: data.description,
+            description: data.description ?? "",
             price: data.price,
             quantity: data.quantity,
             attributes: data.attributes,

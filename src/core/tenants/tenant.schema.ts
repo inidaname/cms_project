@@ -38,6 +38,59 @@ const PaginationMetadataSchema = {
 };
 
 export const TenantSchemas = {
+  onboardTenant: {
+    summary: "Onboard Tenant",
+    description:
+      "Public endpoint: create a new store (tenant) with its owner account. No API key required.",
+    tags: ["Tenants"],
+    body: {
+      type: "object",
+      required: ["storeName", "email", "password"],
+      properties: {
+        storeName: { type: "string", description: "Business/store name" },
+        email: { type: "string", format: "email", description: "Owner email" },
+        password: {
+          type: "string",
+          minLength: 8,
+          description: "Owner password (min 8 characters)",
+        },
+        domain: {
+          type: "string",
+          description: "Store domain (derived from storeName if omitted)",
+        },
+        name: { type: "string", description: "Owner full name" },
+        phone: { type: "string", description: "Owner phone" },
+      },
+    },
+    response: {
+      201: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          code: { type: "string" },
+          message: { type: "string" },
+          data: {
+            type: "object",
+            properties: {
+              tenant: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  domain: { type: "string" },
+                  apiKey: { type: "string" },
+                },
+              },
+              user: UserSchema,
+              accessToken: { type: "string" },
+              refreshToken: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
+
   registerTenant: {
     summary: "Register Tenant",
     description: "Register a new tenant/business. Returns the tenant with their API key.",

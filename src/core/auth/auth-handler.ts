@@ -13,7 +13,7 @@ export const authHandler: Authhandler = (app) => {
   const service = new AuthService(app.prisma);
   return {
     logout: async (request, reply) => {
-      const token = request.body.token;
+      const token = request.body.refreshToken;
 
       if (!token) {
         throw {
@@ -55,11 +55,26 @@ export const authHandler: Authhandler = (app) => {
         };
       }
 
-      const token = app.jwt.sign({ id, userType: "User" });
+      const user = await service.user.getUserByIdOnly(id);
+
+      if (!user) {
+        throw {
+          statusCode: StatusCode.ClientErrorUnauthorized,
+          message: "User no longer exists",
+          status: "error",
+        };
+      }
+
+      const token = app.jwt.sign({
+        id: user.id,
+        userType: "User",
+        tenant_id: user.tenant_id,
+        role: user.role,
+      });
 
       const newRefreshToken = app.jwt.sign(
         {
-          id,
+          id: user.id,
           userType: "refresh_token",
         },
         { expiresIn: "7d" },
@@ -70,7 +85,7 @@ export const authHandler: Authhandler = (app) => {
       return reply.status(StatusCode.SuccessOK).send({
         code: CASSuccessCode.OPERATION_SUCCESSFUL,
         message: CASSuccessMessage.OPERATION_SUCCESSFUL,
-        token,
+        data: { accessToken: token, refreshToken: newRefreshToken },
         status: "success",
       });
     },
@@ -171,7 +186,12 @@ export const authHandler: Authhandler = (app) => {
         };
       }
 
-      const token = app.jwt.sign({ id: getUser.id, userType: "User" });
+      const token = app.jwt.sign({
+        id: getUser.id,
+        userType: "User",
+        tenant_id: getUser.tenant_id,
+        role: getUser.role,
+      });
 
       const refreshToken = app.jwt.sign(
         {
@@ -192,7 +212,7 @@ export const authHandler: Authhandler = (app) => {
         status: "success",
         code: CASSuccessCode.LOGIN_SUCCESSFUL,
         message: CASSuccessMessage.LOGIN_SUCCESSFUL,
-        token,
+        data: { accessToken: token, refreshToken, user: getUser },
       });
     },
     register: async (request, reply) => {
@@ -222,11 +242,14 @@ export const authHandler: Authhandler = (app) => {
 
       const hashedPassword = await app.bcrypt.hash(password, 10);
 
+      const userCount = await service.user.countTenantsUsers(tenant_id);
+
       const user = await service.user.createUser({
         ...rest,
         tenant_id,
         email,
         phone,
+        role: userCount === 0 ? "OWNER" : "USER",
         password: hashedPassword,
       });
 
@@ -236,7 +259,12 @@ export const authHandler: Authhandler = (app) => {
         tenantName: user.tenant.name,
       });
 
-      const token = app.jwt.sign({ id: user.id, userType: "User" });
+      const token = app.jwt.sign({
+        id: user.id,
+        userType: "User",
+        tenant_id,
+        role: user.role,
+      });
 
       const refreshToken = app.jwt.sign(
         {
@@ -257,7 +285,7 @@ export const authHandler: Authhandler = (app) => {
         status: "success",
         code: CASSuccessCode.DATA_CREATED,
         message: CASSuccessMessage.DATA_CREATED,
-        token,
+        data: { accessToken: token, refreshToken, user },
       });
     },
   };

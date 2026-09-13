@@ -19,7 +19,7 @@ const app: PluginType = async (fastify, opts) => {
 
   fastify.register(cors, {
     origin: "*",
-    methods: ["GET", "HEAD", "POST", "PUT", "PATCH"],
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
   });
 
   fastify.register(fastifySwagger, swaggerOption);

@@ -40,6 +40,7 @@ const adminRoutes: PluginType = async (app) => {
   app.put("/team/:user_id/role", { schema: TeamSchemas.updateMemberRole }, handler.updateMemberRole);
   app.delete("/team/:user_id", { schema: TeamSchemas.removeMember }, handler.removeMember);
   app.post("/team/invite", { schema: TeamSchemas.inviteMember }, handler.inviteMember);
+  app.post("/team/invite/accept", { schema: TeamSchemas.acceptInvite }, handler.acceptInvite);
   app.get("/team/invites", { schema: TeamSchemas.getInvites }, handler.getInvites);
   app.delete("/team/invites/:invite_id", { schema: TeamSchemas.cancelInvite }, handler.cancelInvite);
 

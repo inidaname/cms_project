@@ -59,6 +59,10 @@ export class TenantService {
     return await this.prisma.tenant.findUnique({ where: { id } });
   }
 
+  async findTenantByDomain(domain: string) {
+    return await this.prisma.tenant.findUnique({ where: { domain } });
+  }
+
   async createTenant(data: TenantInput) {
     return await this.prisma.tenant.create({
       data,
