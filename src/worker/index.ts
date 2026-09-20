@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { initContext, lazyContext } from "./lib/detached-context";
 import { checkTenant } from "./middleware/check-tenant";
 import { rateLimit } from "./middleware/rate-limit";
@@ -21,6 +22,14 @@ app.onError((err, c) => {
     status as any,
   );
 });
+
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+  }),
+);
 
 app.use("*", async (c, next) => {
   initContext(c.env);
