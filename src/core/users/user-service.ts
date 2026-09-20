@@ -26,7 +26,7 @@ export class UserService {
 
     const skip = (page - 1) * limit;
 
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.user.findMany({
         where: whereClause,
         include: { tenant: true },

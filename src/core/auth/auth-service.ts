@@ -30,7 +30,7 @@ export class AuthService {
   async updatePassword(
     data: { user_id: string; hashedPassword: string; store_id: string },
   ) {
-    return await this.prisma.$transaction([
+    return await Promise.all([
       this.prisma.user.update({
         where: { id: data.user_id },
         data: { password: data.hashedPassword },

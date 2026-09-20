@@ -1,7 +1,7 @@
-import { createHmac } from "crypto";
 import StatusCode from "status-code-enum";
 import { FinecoreWebhookPayload } from "../finecore/types";
 import { getFinecoreWebhookSecret } from "../finecore/tenant-finecore";
+import { hmacSha256Hex } from "../../helpers/webcrypto";
 
 interface WebhookHandlerDeps {
   prisma: PrismaClientType;
@@ -10,13 +10,12 @@ interface WebhookHandlerDeps {
 export const webhookHandler = (deps: WebhookHandlerDeps) => {
   const { prisma } = deps;
 
-  const verifySignature = (
+  const verifySignature = async (
     payload: string,
     signature: string,
     secret: string
-  ): boolean => {
-    const hmac = createHmac("sha256", secret);
-    const digest = hmac.update(payload).digest("hex");
+  ): Promise<boolean> => {
+    const digest = await hmacSha256Hex(payload, secret);
     return digest === signature;
   };
 
@@ -55,7 +54,7 @@ export const webhookHandler = (deps: WebhookHandlerDeps) => {
         const webhookSecret = await getFinecoreWebhookSecret(tenantId, prisma);
 
         if (webhookSecret && signature && timestamp) {
-          const isValid = verifySignature(rawBody, signature, webhookSecret);
+          const isValid = await verifySignature(rawBody, signature, webhookSecret);
           if (!isValid) {
             return reply.status(StatusCode.ClientErrorUnauthorized).send({
               status: "error",

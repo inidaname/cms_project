@@ -252,7 +252,7 @@ export class CartService {
     };
 
     const skip = (page - 1) * limit;
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.cart.findMany({
         where: whereClause,
         include: { _count: true, cartItems: true },

@@ -2,13 +2,14 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2023", "WebWorker"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "target": "es2022",
     "strict": true,
-    "types": ["@cloudflare/workers-types"],
+    "types": ["@cloudflare/workers-types", "node"],
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/worker/**/*.ts", "src/plugins/prisma-worker.ts"]
+  "include": ["src/worker/**/*.ts", "src/plugins/*.ts", "src/types/*", "src/types/fastify/*", "src/core/**/*", "src/routes/**/*", "src/helpers/*", "src/utils/**/*.ts", "src/middleware/**/*.ts"],
+  "exclude": ["src/app.ts", "src/plugins/prisma.ts", "src/plugins/cache.ts", "src/plugins/bcrypt-plugin.ts", "src/plugins/rate-limit.ts", "src/middleware/tenant-loader.ts", "server.ts"]
 }

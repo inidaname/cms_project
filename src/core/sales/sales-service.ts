@@ -75,7 +75,7 @@ export class SalesService {
   async getAllSales(tenant_id: string, page = 1, limit = 10, user_id?: string) {
     const skip = (page - 1) * limit;
 
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.sales.findMany({
         where: { tenant_id, ...(user_id && { user_id }) },
         include: {

@@ -1,5 +1,5 @@
-import crypto from "crypto";
 import bcrypt from "bcrypt";
+import { generateApiKey } from "../../helpers/generate_apikey";
 
 export class TeamService {
   prisma: PrismaClientType;
@@ -83,7 +83,7 @@ export class TeamService {
   }
 
   async inviteMember(tenant_id: string, invitedBy: string, email: string, role: string = "USER") {
-    const token = crypto.randomBytes(32).toString("hex");
+    const token = generateApiKey();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -135,21 +135,19 @@ export class TeamService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.user.create({
-        data: {
-          tenant_id: invite.tenant_id,
-          email: invite.email,
-          name,
-          password: hashedPassword,
-          role: invite.role,
-        },
-      });
+    await this.prisma.user.create({
+      data: {
+        tenant_id: invite.tenant_id,
+        email: invite.email,
+        name,
+        password: hashedPassword,
+        role: invite.role,
+      },
+    });
 
-      await tx.teamInvite.update({
-        where: { id: invite.id },
-        data: { accepted: true },
-      });
+    await this.prisma.teamInvite.update({
+      where: { id: invite.id },
+      data: { accepted: true },
     });
 
     return { message: "Invitation accepted successfully" };

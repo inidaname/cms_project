@@ -99,7 +99,7 @@ export class ProductService {
           OR: [{ title: { contains: filter, mode: "insensitive" } }],
         }
       : { tenant_id };
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
         include: {
@@ -165,7 +165,7 @@ export class ProductService {
   }
 
   async removeProduct(id: string) {
-    const [product] = await this.prisma.$transaction([
+    const [product] = await Promise.all([
       this.prisma.product.delete({ where: { id } }),
       this.prisma.productVariation.deleteMany({ where: { product_id: id } }),
     ]);

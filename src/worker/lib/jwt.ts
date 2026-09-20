@@ -1,36 +1,39 @@
-import { sign, verify } from "hono/jwt";
+import { createSigner, createVerifier, createDecoder } from "fast-jwt";
 
 export interface JwtSignOptions {
   expiresIn?: string | number;
 }
 
-const EXPIRY_SECONDS: Record<string, number> = {
-  "15m": 15 * 60,
-  "30m": 30 * 60,
-  "1h": 60 * 60,
-  "12h": 12 * 60 * 60,
-  "24h": 24 * 60 * 60,
-  "7d": 7 * 24 * 60 * 60,
-  "30d": 30 * 24 * 60 * 60,
-};
+const DEFAULT_TTL_SECONDS = 15 * 60;
 
 export function createJwt(secret: string) {
+  const signer = createSigner({ key: secret, algorithm: "HS256" });
+  const verifier = createVerifier({ key: secret, algorithms: ["HS256"] });
+  const decoder = createDecoder();
+
+  const ttlToSeconds = (expiresIn?: string | number): number => {
+    if (typeof expiresIn === "number") return expiresIn;
+    if (!expiresIn) return DEFAULT_TTL_SECONDS;
+    const match = /^(\d+)([smhd])$/.exec(expiresIn);
+    if (!match) return DEFAULT_TTL_SECONDS;
+    const n = Number(match[1]);
+    const unit = { s: 1, m: 60, h: 3600, d: 86400 }[match[2] as "s" | "m" | "h" | "d"];
+    return n * unit;
+  };
+
   return {
-    sign: async <T extends Record<string, unknown>>(
-      payload: T,
-      options?: JwtSignOptions,
-    ): Promise<string> => {
-      const ttl =
-        typeof options?.expiresIn === "number"
-          ? options.expiresIn
-          : options?.expiresIn
-            ? EXPIRY_SECONDS[options.expiresIn] ?? 15 * 60
-            : 15 * 60;
-      return sign({ ...payload, exp: Math.floor(Date.now() / 1000) + ttl }, secret, "HS256");
+    sign: (payload: Record<string, unknown>, options?: JwtSignOptions): string => {
+      const payloadWithExp = {
+        ...payload,
+        exp: Math.floor(Date.now() / 1000) + ttlToSeconds(options?.expiresIn),
+        iat: Math.floor(Date.now() / 1000),
+      };
+      return signer(payloadWithExp as never);
     },
-    verify: async <T extends Record<string, unknown>>(token: string): Promise<T> => {
-      return (await verify(token, secret, "HS256")) as T;
+    verify: (token: string): Record<string, unknown> => {
+      return verifier(token) as Record<string, unknown>;
     },
+    decode: decoder,
   };
 }
 

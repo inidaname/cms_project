@@ -4,5 +4,6 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "server.ts"]
+  "include": ["src/**/*.ts", "server.ts"],
+  "exclude": ["src/worker", "src/plugins/cache-kv.ts", "src/plugins/prisma-worker.ts", "dist", "test"]
 }

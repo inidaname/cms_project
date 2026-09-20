@@ -48,7 +48,7 @@ export class SubscriberService {
         }
       : { tenant_id };
 
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.subscriber.findMany({
         where,
         include: {
@@ -181,7 +181,7 @@ export class ListService {
         }
       : { tenant_id };
 
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.list.findMany({
         where,
         include: {
@@ -259,7 +259,7 @@ export class CampaignService {
         }
       : { tenant_id };
 
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.campaign.findMany({
         where,
         include: { _count: true, sends: true },
@@ -405,7 +405,7 @@ export class EmailSendService {
       }),
     };
 
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.emailSend.findMany({
         where,
         include: { campaign: true, subscriber: true },

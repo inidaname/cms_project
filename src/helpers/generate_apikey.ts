@@ -1,5 +1,5 @@
-import crypto from "crypto";
+import { randomHex } from "./webcrypto";
 
-export function generateApiKey() {
-  return crypto.randomBytes(32).toString("hex");
+export function generateApiKey(): string {
+  return randomHex(32);
 }

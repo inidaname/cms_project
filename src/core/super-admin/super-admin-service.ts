@@ -102,7 +102,7 @@ export class SuperAdminService {
         }
       : { domain: { not: "platform" } };
 
-    const [tenants, total] = await this.prisma.$transaction([
+    const [tenants, total] = await Promise.all([
       this.prisma.tenant.findMany({
         where,
         include: {
@@ -151,7 +151,7 @@ export class SuperAdminService {
           ],
         }
       : { tenant_id };
-    const [users, total] = await this.prisma.$transaction([
+    const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         select: { id: true, tenant_id: true, email: true, name: true, phone: true, role: true, agreed: true, createdAt: true, updatedAt: true },
@@ -168,7 +168,7 @@ export class SuperAdminService {
     const where: any = filter
       ? { tenant_id, title: { contains: filter, mode: "insensitive" as const } }
       : { tenant_id };
-    const [products, total] = await this.prisma.$transaction([
+    const [products, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
         skip: (page - 1) * limit,
@@ -182,7 +182,7 @@ export class SuperAdminService {
 
   async listTenantOrders(tenant_id: string, { page, limit }: ListParams) {
     const where = { tenant_id };
-    const [orders, total] = await this.prisma.$transaction([
+    const [orders, total] = await Promise.all([
       this.prisma.sales.findMany({
         where,
         include: { cart: { include: { cartItems: true } } },
@@ -197,7 +197,7 @@ export class SuperAdminService {
 
   async listTenantPayments(tenant_id: string, { page, limit }: ListParams) {
     const where = { tenant_id };
-    const [payments, total] = await this.prisma.$transaction([
+    const [payments, total] = await Promise.all([
       this.prisma.payments.findMany({
         where,
         skip: (page - 1) * limit,
@@ -213,7 +213,7 @@ export class SuperAdminService {
     const where: any = filter
       ? { tenant_id, OR: [{ action: { contains: filter, mode: "insensitive" as const } }, { entityType: { contains: filter, mode: "insensitive" as const } }] }
       : { tenant_id };
-    const [logs, total] = await this.prisma.$transaction([
+    const [logs, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where,
         include: { user: { select: { name: true, email: true } } },
@@ -241,7 +241,7 @@ export class SuperAdminService {
         { name: { contains: filter, mode: "insensitive" as const } },
       ];
     }
-    const [users, total] = await this.prisma.$transaction([
+    const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         select: { id: true, tenant_id: true, email: true, name: true, phone: true, role: true, agreed: true, createdAt: true, updatedAt: true, tenant: { select: { id: true, name: true, domain: true } } },
@@ -278,7 +278,7 @@ export class SuperAdminService {
           ],
         }
       : {};
-    const [logs, total] = await this.prisma.$transaction([
+    const [logs, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where,
         include: {

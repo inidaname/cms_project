@@ -1,7 +1,9 @@
 import { Hono } from "hono";
-import createPrisma from "../plugins/prisma-worker";
+import { initContext, lazyContext } from "./lib/detached-context";
 import { checkTenant } from "./middleware/check-tenant";
 import { rateLimit } from "./middleware/rate-limit";
+import { buildRouteEntries } from "./routes";
+import { mountShimRoutes } from "./lib/dispatch";
 import type { Env, WorkerEnv } from "./types";
 
 const app = new Hono<WorkerEnv>();
@@ -20,16 +22,24 @@ app.onError((err, c) => {
   );
 });
 
+app.use("*", async (c, next) => {
+  initContext(c.env);
+  return next();
+});
+
 app.use("*", rateLimit());
 
 app.get("/health", (c) => c.json({ ok: true, ts: Date.now() }));
 
 app.get("/health/db", async (c) => {
-  const prisma = createPrisma(c.env.DATABASE_URL);
+  initContext(c.env);
+  const prisma = lazyContext.prisma;
   const tenants = await prisma.tenant.count();
   return c.json({ ok: true, tenants });
 });
 
 app.use("*", checkTenant);
+
+mountShimRoutes(app, buildRouteEntries());
 
 export default app as unknown as ExportedHandler<Env>;

@@ -6,7 +6,7 @@ const ajv = new Ajv({
   strict: false,
   allErrors: true,
   removeAdditional: false,
-  coerceTypes: false,
+  coerceTypes: true,
 });
 
 addFormats(ajv);

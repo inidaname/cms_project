@@ -29,7 +29,7 @@ export class PaymentService {
     };
 
     const skip = (page - 1) * limit;
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.payments.findMany({
         where: whereClause,
         include: { paidBy: true, paidFor: true, paidTo: true },

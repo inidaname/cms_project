@@ -1,5 +1,5 @@
 import StatusCode from "status-code-enum";
-import crypto from "crypto";
+import { randomHex, sha256Hex } from "../../helpers/webcrypto";
 import {
   CASErrorCode,
   CASErrorMessage,
@@ -92,7 +92,7 @@ export const authHandler: Authhandler = (app) => {
     resetPassword: async (req, reply) => {
       const { token, password } = req.body;
 
-      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      const tokenHash = await sha256Hex(token);
 
       const stored = await service.getForgetPasswordToken(tokenHash);
 
@@ -145,11 +145,8 @@ export const authHandler: Authhandler = (app) => {
         });
       }
 
-      const rawToken = crypto.randomBytes(32).toString("hex");
-      const tokenHash = crypto
-        .createHash("sha256")
-        .update(rawToken)
-        .digest("hex");
+      const rawToken = randomHex(32);
+      const tokenHash = await sha256Hex(rawToken);
 
       await service.deleteForgetPassword(user.id);
 

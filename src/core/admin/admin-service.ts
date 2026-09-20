@@ -273,7 +273,7 @@ export class AdminService {
             { description: { contains: search, mode: "insensitive" } },
           ];
         }
-        const [products, total] = await this.prisma.$transaction([
+        const [products, total] = await Promise.all([
           this.prisma.product.findMany({
             where,
             include: {
