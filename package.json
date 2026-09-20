@@ -47,6 +47,7 @@
     "@prisma/extension-accelerate": "^2.0.2",
     "@scalar/fastify-api-reference": "^1.38.1",
     "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "ajv-keywords": "^5.1.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
