@@ -67,3 +67,6 @@ dist
 .env
 /src/generated/prisma
 .vercel
+
+.dev.vars
+.wrangler/
