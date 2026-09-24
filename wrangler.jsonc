@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "possible-cms",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "4b530be9bf43483ba7ed2251e7b7eafe"
+    }
+  ],
+  "alias": {
+    // Native bcrypt does not exist in workerd; bcryptjs is hash-compatible.
+    "bcrypt": "bcryptjs",
+    "bcrypt/bcrypt": "bcryptjs"
+  },
+  "vars": {
+    // Non-secret vars only. Secrets go via: npx wrangler secret put <NAME>
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true
+    }
+  },
+}

@@ -108,3 +108,105 @@ export const sendUserWelcomeEmail = async (params: {
     `,
   });
 };
+
+export const sendPasswordResetEmail = async (params: {
+  email: string;
+  name: string;
+  tenantName: string;
+  token: string;
+  expiresAt: Date;
+}) => {
+  const { email, name, tenantName, token, expiresAt } = params;
+
+  return await resend.emails.send({
+    from: FROM_EMAIL,
+    to: [email],
+    subject: `Reset your ${tenantName} password`,
+    html: `
+      <div style="${styles.container}">
+        <div style="${styles.header}">
+          <h1 style="margin:0;">Password Reset</h1>
+        </div>
+        <div style="${styles.body}">
+          <h2>Hi ${name},</h2>
+          <p>We received a request to reset your password for <strong>${tenantName}</strong>.</p>
+          <p>Use the following reset token in the password reset form:</p>
+          <div style="${styles.codeBox}">
+            <code style="word-break: break-all; color: #d63384;">${token}</code>
+          </div>
+          <p>This token expires at ${expiresAt.toISOString()}.</p>
+          <p style="font-size: 13px; color: #666;">If you did not request this, you can safely ignore this email.</p>
+        </div>
+        <div style="${styles.footer}">
+          This password reset token can only be used once.
+        </div>
+      </div>
+    `,
+  });
+};
+
+export const sendPasswordResetConfirmationEmail = async (params: {
+  email: string;
+  name: string;
+  tenantName: string;
+}) => {
+  const { email, name, tenantName } = params;
+
+  return await resend.emails.send({
+    from: FROM_EMAIL,
+    to: [email],
+    subject: `Your ${tenantName} password was changed`,
+    html: `
+      <div style="${styles.container}">
+        <div style="${styles.header}">
+          <h1 style="margin:0;">Password Changed</h1>
+        </div>
+        <div style="${styles.body}">
+          <h2>Hi ${name},</h2>
+          <p>Your password for <strong>${tenantName}</strong> was successfully changed.</p>
+          <p>If you did not make this change, contact your workspace administrator immediately.</p>
+        </div>
+        <div style="${styles.footer}">
+          This is an account security notification.
+        </div>
+      </div>
+    `,
+  });
+};
+
+export const sendAuthSecurityEmail = async (params: {
+  email: string;
+  name: string;
+  tenantName: string;
+  action: "login" | "logout";
+  ipAddress: string;
+  userAgent: string;
+}) => {
+  const { email, name, tenantName, action, ipAddress, userAgent } = params;
+  const actionLabel = action === "login" ? "signed in to" : "signed out of";
+
+  return await resend.emails.send({
+    from: FROM_EMAIL,
+    to: [email],
+    subject: `New ${action} to your ${tenantName} account`,
+    html: `
+      <div style="${styles.container}">
+        <div style="${styles.header}">
+          <h1 style="margin:0;">New Account Activity</h1>
+        </div>
+        <div style="${styles.body}">
+          <h2>Hi ${name},</h2>
+          <p>Your account ${actionLabel} <strong>${tenantName}</strong> from a new device or location.</p>
+          <div style="${styles.codeBox}">
+            <p style="margin: 5px 0;"><strong>IP address:</strong> ${ipAddress}</p>
+            <p style="margin: 5px 0;"><strong>Device:</strong> ${userAgent}</p>
+          </div>
+          <p>If this was not you, change your password immediately.</p>
+        </div>
+        <div style="${styles.footer}">
+          This is an account security notification.
+        </div>
+      </div>
+    `,
+  });
+};

@@ -7,7 +7,36 @@ import {
   CASSuccessMessage,
 } from "../../utils/enums";
 import { AuthService } from "./auth-service";
-import { sendUserWelcomeEmail } from "../../helpers/content";
+import {
+  sendAuthSecurityEmail,
+  sendPasswordResetConfirmationEmail,
+  sendPasswordResetEmail,
+  sendUserWelcomeEmail,
+} from "../../helpers/content";
+
+const getRequestContext = (request: any) => ({
+  ipAddress:
+    (request.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+    request.ip ||
+    "unknown",
+  userAgent: (request.headers["user-agent"] as string | undefined) || "unknown",
+});
+
+const sendAuthEmailBestEffort = async (
+  request: any,
+  event: string,
+  userId: string,
+  send: () => Promise<unknown>,
+) => {
+  try {
+    const result = await send();
+    if (result && typeof result === "object" && "error" in result && result.error) {
+      request.log.error({ event, userId, error: result.error }, "Auth email delivery failed");
+    }
+  } catch (error) {
+    request.log.error({ event, userId, error }, "Auth email delivery failed");
+  }
+};
 
 export const authHandler: Authhandler = (app) => {
   const service = new AuthService(app.prisma);
@@ -23,7 +52,37 @@ export const authHandler: Authhandler = (app) => {
         };
       }
 
+      const user = await service.user.getUserByIdOnly(request.user.id);
+      if (!user) {
+        throw {
+          statusCode: StatusCode.ClientErrorUnauthorized,
+          message: "User no longer exists",
+          status: "error",
+        };
+      }
+      const context = getRequestContext(request);
+      const isNewContext = !(await service.hasSecurityContext({
+        user_id: user.id,
+        ...context,
+      }));
       await service.deleteRefreshToken(token);
+      await service.recordSecurityEvent({
+        tenant_id: user.tenant_id,
+        user_id: user.id,
+        action: "LOGOUT",
+        ...context,
+      });
+      if (isNewContext) {
+        await sendAuthEmailBestEffort(request, "logout", user.id, () =>
+          sendAuthSecurityEmail({
+            email: user.email,
+            name: user.name ?? "",
+            tenantName: request.tenant?.name ?? "your workspace",
+            action: "logout",
+            ...context,
+          }),
+        );
+      }
 
       return reply.status(StatusCode.SuccessOK).send({
         status: "success",
@@ -111,6 +170,13 @@ export const authHandler: Authhandler = (app) => {
         store_id: stored.id,
         user_id: stored.user_id,
       });
+      await sendAuthEmailBestEffort(req, "password-reset-confirmation", stored.user_id, () =>
+        sendPasswordResetConfirmationEmail({
+          email: stored.user.email,
+          name: stored.user.name ?? "",
+          tenantName: req.tenant?.name ?? "your workspace",
+        }),
+      );
 
       return reply.status(StatusCode.SuccessOK).send({
         status: "success",
@@ -162,6 +228,15 @@ export const authHandler: Authhandler = (app) => {
         tenant_id: id,
         used: false,
       });
+      await sendAuthEmailBestEffort(request, "password-reset-request", user.id, () =>
+        sendPasswordResetEmail({
+          email: user.email,
+          name: user.name ?? "",
+          tenantName: request.tenant?.name ?? "your workspace",
+          token: rawToken,
+          expiresAt,
+        }),
+      );
 
       return reply.status(StatusCode.SuccessOK).send({
         status: "success",
@@ -212,6 +287,28 @@ export const authHandler: Authhandler = (app) => {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         revoked: false,
       });
+      const context = getRequestContext(request);
+      const isNewContext = !(await service.hasSecurityContext({
+        user_id: getUser.id,
+        ...context,
+      }));
+      await service.recordSecurityEvent({
+        tenant_id: getUser.tenant_id,
+        user_id: getUser.id,
+        action: "LOGIN",
+        ...context,
+      });
+      if (isNewContext) {
+        await sendAuthEmailBestEffort(request, "login", getUser.id, () =>
+          sendAuthSecurityEmail({
+            email: getUser.email,
+            name: getUser.name ?? "",
+            tenantName: request.tenant?.name ?? "your workspace",
+            action: "login",
+            ...context,
+          }),
+        );
+      }
 
       return reply.status(StatusCode.SuccessOK).send({
         status: "success",
@@ -258,11 +355,13 @@ export const authHandler: Authhandler = (app) => {
         password: hashedPassword,
       });
 
-      await sendUserWelcomeEmail({
-        name: user.name ?? "",
-        email: user.email,
-        tenantName: user.tenant.name,
-      });
+      await sendAuthEmailBestEffort(request, "registration-welcome", user.id, () =>
+        sendUserWelcomeEmail({
+          name: user.name ?? "",
+          email: user.email,
+          tenantName: user.tenant.name,
+        }),
+      );
 
       const token = app.jwt.sign({
         id: user.id,
