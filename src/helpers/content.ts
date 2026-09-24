@@ -2,6 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = "Hassan Sani <hassan@mainheart.org>";
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 // --- Shared Styles ---
 const styles = {
@@ -132,7 +133,7 @@ export const sendPasswordResetEmail = async (params: {
           <p>We received a request to reset your password for <strong>${tenantName}</strong>.</p>
           <p>Use the following reset token in the password reset form:</p>
           <div style="${styles.codeBox}">
-            <code style="word-break: break-all; color: #d63384;">${token}</code>
+              <a href="${FRONTEND_URL}/reset-password/${token}" style="word-break: break-all; color: #d63384;">Start Here</a>
           </div>
           <p>This token expires at ${expiresAt.toISOString()}.</p>
           <p style="font-size: 13px; color: #666;">If you did not request this, you can safely ignore this email.</p>
