@@ -63,4 +63,42 @@ export class AuthService {
   async deleteRefreshToken(token: string) {
     return await this.prisma.refreshToken.deleteMany({ where: { token } });
   }
+
+  async hasSecurityContext(data: {
+    user_id: string;
+    ipAddress: string;
+    userAgent: string;
+  }) {
+    return Boolean(
+      await this.prisma.auditLog.findFirst({
+        where: {
+          user_id: data.user_id,
+          entityType: "USER",
+          action: { in: ["LOGIN", "LOGOUT"] },
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+        },
+        select: { id: true },
+      }),
+    );
+  }
+
+  async recordSecurityEvent(data: {
+    tenant_id: string;
+    user_id: string;
+    action: "LOGIN" | "LOGOUT";
+    ipAddress: string;
+    userAgent: string;
+  }) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenant_id: data.tenant_id,
+        user_id: data.user_id,
+        action: data.action,
+        entityType: "USER",
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+      },
+    });
+  }
 }

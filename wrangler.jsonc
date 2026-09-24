@@ -3,7 +3,9 @@
   "name": "possible-cms",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-09-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "kv_namespaces": [
     {
       "binding": "CACHE",
@@ -17,5 +19,18 @@
   },
   "vars": {
     // Non-secret vars only. Secrets go via: npx wrangler secret put <NAME>
-  }
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true
+    }
+  },
 }
