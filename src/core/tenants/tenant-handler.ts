@@ -167,6 +167,7 @@ export const tenantHandler: TenantHandler = (app) => {
           tenant: {
             id: tenant.id,
             name: tenant.name,
+            logoImageURL: tenant.logoImageURL,
             domain: tenant.domain,
             apiKey: tenant.apiKey,
           },
