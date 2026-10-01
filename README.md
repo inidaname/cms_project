@@ -24,14 +24,10 @@ Run the test cases.
 requires authentication and limits files to 10 MiB. Uploaded files are stored
 in Cloudflare R2 under a generated `uploads/` object key.
 
-Configure the following environment variables with an R2 S3 API token:
-
-- `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_BUCKET_NAME`
-- `R2_PUBLIC_BASE_URL` (optional; public base URL for the bucket, used to
-  include a URL in the response)
+For Cloudflare Workers, configure an R2 bucket binding named `UPLOADS`. Set
+`R2_PUBLIC_BASE_URL` as a Worker variable if you want the response to include a
+public URL for the uploaded object. The route writes directly through the R2
+binding and does not require S3 API credentials.
 
 The response includes the object key, content type, size, and the public URL
 when configured.

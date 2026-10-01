@@ -2,6 +2,8 @@ export type Env = {
   DATABASE_URL: string;
   JWT_SECRET: string;
   CACHE: KVNamespace;
+  UPLOADS: R2Bucket;
+  R2_PUBLIC_BASE_URL?: string;
   [key: string]: unknown;
 };
 
