@@ -112,4 +112,4 @@ app.post(
 
 mountShimRoutes(app, buildRouteEntries());
 
-export default app as unknown as ExportedHandler<Env>;
+export default app as unknown as import("@cloudflare/workers-types").ExportedHandler<Env>;
