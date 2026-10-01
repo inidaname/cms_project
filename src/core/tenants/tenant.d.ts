@@ -8,12 +8,14 @@ interface OnboardTenantBody {
   domain?: string;
   name?: string;
   phone?: string;
+  logoImageURL?: string | null;
 }
 
 interface OnboardTenantData {
   tenant: {
     id: string;
     name: string;
+    logoImageURL: string | null;
     domain: string;
     apiKey: string;
   };

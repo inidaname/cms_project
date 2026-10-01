@@ -1,0 +1,2 @@
+ALTER TABLE "Product" ADD COLUMN "imageURL" TEXT;
+ALTER TABLE "Tenant" ADD COLUMN "logoImageURL" TEXT;

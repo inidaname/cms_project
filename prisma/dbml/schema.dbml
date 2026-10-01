@@ -5,6 +5,7 @@
 Table Tenant {
   id String [pk]
   name String [not null]
+  logoImageURL String
   domain String [unique, not null]
   apiKey String [unique, not null]
   status TenantStatus [not null, default: 'ACTIVE']
@@ -171,6 +172,7 @@ Table PasswordToken {
 Table Product {
   id String [pk]
   title String [not null]
+  imageURL String
   description String [not null]
   owner Tenant [not null]
   tenant_id String [not null]

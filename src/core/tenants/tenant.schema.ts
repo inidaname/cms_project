@@ -3,6 +3,7 @@ const TenantSchema = {
   properties: {
     id: { type: "string" },
     name: { type: "string" },
+    logoImageURL: { type: "string", format: "uri", nullable: true },
     domain: { type: "string" },
     apiKey: { type: "string" },
     createdAt: { type: "string" },
@@ -54,6 +55,7 @@ export const TenantSchemas = {
           minLength: 8,
           description: "Owner password (min 8 characters)",
         },
+        logoImageURL: { type: "string", format: "uri", nullable: true },
         domain: {
           type: "string",
           description: "Store domain (derived from storeName if omitted)",
@@ -77,6 +79,7 @@ export const TenantSchemas = {
                 properties: {
                   id: { type: "string" },
                   name: { type: "string" },
+                  logoImageURL: { type: "string", format: "uri", nullable: true },
                   domain: { type: "string" },
                   apiKey: { type: "string" },
                 },
@@ -100,6 +103,7 @@ export const TenantSchemas = {
       required: ["name", "domain"],
       properties: {
         name: { type: "string", description: "Business/tenant name" },
+        logoImageURL: { type: "string", format: "uri", nullable: true },
         domain: { type: "string", description: "Business domain" },
       },
     },
@@ -123,6 +127,7 @@ export const TenantSchemas = {
       type: "object",
       properties: {
         name: { type: "string", description: "Business/tenant name" },
+        logoImageURL: { type: "string", format: "uri", nullable: true },
         domain: { type: "string", description: "Business domain" },
       },
     },

@@ -31,6 +31,7 @@ export const SharedSchemas = {
       properties: {
         id: { type: "string", format: "uuid" },
         name: { type: "string" },
+        logoImageURL: { type: "string", format: "uri", nullable: true },
         domain: { type: "string" },
         apiKey: { type: "string" },
         status: { type: "string", enum: ["ACTIVE", "EXPIRED", "DELETED", "OUTDATED", "ABANDONED"] },
@@ -61,6 +62,7 @@ export const SharedSchemas = {
       properties: {
         id: { type: "string", format: "uuid" },
         title: { type: "string" },
+        imageURL: { type: "string", format: "uri", nullable: true },
         description: { type: "string" },
         tenant_id: { type: "string", format: "uuid" },
         price: { type: "number" },

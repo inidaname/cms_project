@@ -97,7 +97,7 @@ export const tenantHandler: TenantHandler = (app) => {
       });
     },
     onboardTenant: async (request, reply) => {
-      const { storeName, email, password, domain, name, phone } = request.body;
+      const { storeName, email, password, domain, name, phone, logoImageURL } = request.body;
 
       const normalizedDomain = (domain ?? storeName)
         .toLowerCase()
@@ -118,6 +118,7 @@ export const tenantHandler: TenantHandler = (app) => {
 
       const tenant = await service.createTenant({
         name: storeName,
+        logoImageURL,
         domain: normalizedDomain,
         apiKey: `cas_key_${generateApiKey()}`,
         status: "ACTIVE",

@@ -15,6 +15,7 @@ generator dbml {
 model Tenant {
   id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                 String
+  logoImageURL         String?
   domain               String                @unique
   apiKey               String                @unique
   status               TenantStatus          @default(ACTIVE)
@@ -180,6 +181,7 @@ enum ProductStatus {
 model Product {
   id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title             String
+  imageURL          String?
   description       String             @db.Text
   owner             Tenant             @relation(fields: [tenant_id], references: [id])
   tenant_id         String             @db.Uuid

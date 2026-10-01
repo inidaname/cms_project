@@ -12,6 +12,7 @@ export const ProductRouteSchemas = {
       required: ["title", "price", "attributes", "isBundle"],
       properties: {
         title: { type: "string" },
+        imageURL: { type: "string", format: "uri", nullable: true },
         description: { type: "string" },
         price: { type: "number" },
         attributes: { type: "object" },
