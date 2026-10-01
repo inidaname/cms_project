@@ -18,6 +18,30 @@ For production mode
 
 Run the test cases.
 
+## File uploads
+
+`POST /upload` accepts one multipart file in the `file` field. The endpoint
+requires authentication and limits files to 10 MiB. Uploaded files are stored
+in Cloudflare R2 under a generated `uploads/` object key.
+
+Configure the following environment variables with an R2 S3 API token:
+
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET_NAME`
+- `R2_PUBLIC_BASE_URL` (optional; public base URL for the bucket, used to
+  include a URL in the response)
+
+The response includes the object key, content type, size, and the public URL
+when configured.
+
+```sh
+curl -X POST https://your-api.example.com/upload \
+  -H "Authorization: Bearer <access-token>" \
+  -F "file=@./image.png"
+```
+
 ## Learn More
 
 To learn Fastify, check out the [Fastify documentation](https://fastify.dev/docs/latest/).
