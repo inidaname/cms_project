@@ -12,6 +12,12 @@
       "id": "4b530be9bf43483ba7ed2251e7b7eafe"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET_NAME_",
+      "bucket_name": "cms-project"
+    }
+  ],
   "alias": {
     // Native bcrypt does not exist in workerd; bcryptjs is hash-compatible.
     "bcrypt": "bcryptjs",
