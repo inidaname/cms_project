@@ -28,3 +28,11 @@ export function getApp(c: Context<WorkerEnv>): AppContext {
   instances.set(c, ctx);
   return ctx;
 }
+
+export async function closeApp(c: Context<WorkerEnv>): Promise<void> {
+  const ctx = instances.get(c);
+  if (!ctx) return;
+
+  instances.delete(c);
+  await ctx.prisma.$disconnect();
+}

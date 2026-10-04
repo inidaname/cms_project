@@ -2,7 +2,7 @@ import type { Context, Next } from "hono";
 import StatusCode from "status-code-enum";
 import { CASErrorCode, CASErrorMessage } from "../../utils/enums";
 import type { WorkerEnv } from "../types";
-import { getApp, lazyContext } from "../lib/detached-context";
+import { getApp } from "../lib/app-context";
 
 const PUBLIC_ROUTES = [
   "/docs",
@@ -32,7 +32,7 @@ export async function checkTenant(c: Context<WorkerEnv>, next: Next) {
   }
 
   const app = getApp(c);
-  const jwt = lazyContext.jwt!;
+  const jwt = app.jwt;
 
   if (url.startsWith(SUPER_ADMIN_ROUTES_PREFIX)) {
     const authHeader = c.req.header("authorization");

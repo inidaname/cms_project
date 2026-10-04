@@ -88,17 +88,37 @@ export function createRouteHandler(entry: ShimRouteEntry) {
   };
 }
 
-export function mountShimRoutes(instance: Hono<WorkerEnv>, entries: ShimRouteEntry[]) {
-  for (const entry of entries) {
+export function mountShimRoutes(
+  instance: Hono<WorkerEnv>,
+  entries: ShimRouteEntry[],
+  resolveEntries?: (c: Context<WorkerEnv>) => ShimRouteEntry[],
+) {
+  const requestEntries = new WeakMap<Context<WorkerEnv>, ShimRouteEntry[]>();
+
+  for (const [index, entry] of entries.entries()) {
     let routePath = `${entry.prefix}${entry.path}`.replace(/\/+$/, "") || "/";
     if (!routePath.startsWith("/")) routePath = `/${routePath}`;
 
     const handler = createRouteHandler(entry);
+    const requestHandler = resolveEntries
+      ? async (c: Context<WorkerEnv>) => {
+          let resolved = requestEntries.get(c);
+          if (!resolved) {
+            resolved = resolveEntries(c);
+            requestEntries.set(c, resolved);
+          }
+          const requestEntry = resolved[index];
+          if (!requestEntry) {
+            throw new Error(`Missing request-scoped route entry at index ${index}`);
+          }
+          return createRouteHandler(requestEntry)(c);
+        }
+      : handler;
 
     if (entry.authenticate) {
-      instance.on(entry.method, routePath, (c, next) => authenticate(c, next), (c) => handler(c));
+      instance.on(entry.method, routePath, (c, next) => authenticate(c, next), (c) => requestHandler(c));
     } else {
-      instance.on(entry.method, routePath, (c) => handler(c));
+      instance.on(entry.method, routePath, (c) => requestHandler(c));
     }
     void StatusCode;
   }

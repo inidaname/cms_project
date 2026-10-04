@@ -1,5 +1,4 @@
 import { createScope, type ShimRouteEntry } from "../lib/fastify-shim";
-import { lazyContext } from "../lib/detached-context";
 import { authenticate } from "../middleware/check-tenant";
 
 import authRoutes from "../../routes/auth/routes";
@@ -12,7 +11,6 @@ import paymentRoutes from "../../routes/payments/routes";
 import webhookRoutes from "../../routes/webhook/routes";
 import adminRoutes from "../../routes/admin/routes";
 import superAdminRoutes from "../../routes/super-admin/routes";
-import uploadRoutes from "../../routes/upload/routes";
 
 type RoutePlugin = (app: unknown, opts?: unknown) => Promise<void>;
 
@@ -27,17 +25,21 @@ const prefixByPlugin: [string, RoutePlugin][] = [
   ["/webhook", webhookRoutes as unknown as RoutePlugin],
   ["/admin", adminRoutes as unknown as RoutePlugin],
   ["/super-admin", superAdminRoutes as unknown as RoutePlugin],
-  ["/upload", uploadRoutes],
 ];
 
-export function buildRouteEntries(): ShimRouteEntry[] {
+export function buildRouteEntries(deps: {
+  prisma: unknown;
+  jwt: unknown;
+  bcrypt: unknown;
+  cache: unknown;
+}): ShimRouteEntry[] {
   const entries: ShimRouteEntry[] = [];
   for (const [prefix, plugin] of prefixByPlugin) {
     const scope = createScope({
-      prisma: lazyContext.prisma,
-      jwt: lazyContext.jwt,
-      bcrypt: lazyContext.bcrypt,
-      cache: lazyContext.cache,
+      prisma: deps.prisma,
+      jwt: deps.jwt,
+      bcrypt: deps.bcrypt,
+      cache: deps.cache,
       authenticate,
     });
     void plugin(scope, {});

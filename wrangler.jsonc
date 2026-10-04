@@ -14,7 +14,7 @@
   ],
   "r2_buckets": [
     {
-      "binding": "R2_BUCKET_NAME_",
+      "binding": "R2_BUCKET_NAME",
       "bucket_name": "cms-project"
     }
   ],

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { initContext, lazyContext } from "./lib/detached-context";
+import { closeApp, getApp } from "./lib/app-context";
 import { authenticate, checkTenant } from "./middleware/check-tenant";
 import { rateLimit } from "./middleware/rate-limit";
 import { buildRouteEntries } from "./routes";
@@ -17,7 +17,9 @@ app.onError((err, c) => {
       statusCode: status,
       error: status >= 500 ? "Internal Server Error" : "Bad Request",
       message,
-      ...(err instanceof Error && (err as any).details ? { details: (err as any).details } : {}),
+      ...(err instanceof Error && (err as any).details
+        ? { details: (err as any).details }
+        : {}),
     },
     status as any,
   );
@@ -32,8 +34,11 @@ app.use(
 );
 
 app.use("*", async (c, next) => {
-  initContext(c.env);
-  return next();
+  try {
+    return await next();
+  } finally {
+    await closeApp(c);
+  }
 });
 
 app.use("*", rateLimit());
@@ -41,8 +46,7 @@ app.use("*", rateLimit());
 app.get("/health", (c) => c.json({ ok: true, ts: Date.now() }));
 
 app.get("/health/db", async (c) => {
-  initContext(c.env);
-  const prisma = lazyContext.prisma;
+  const prisma = getApp(c).prisma;
   const tenants = await prisma.tenant.count();
   return c.json({ ok: true, tenants });
 });
@@ -53,7 +57,7 @@ app.post(
   "/upload",
   (c, next) => authenticate(c, next),
   async (c) => {
-    const bucket = c.env.UPLOADS;
+    const bucket = c.env.R2_BUCKET_NAME;
     if (!bucket) {
       return c.json(
         { status: "error", message: "R2 storage is not configured" },
@@ -61,15 +65,34 @@ app.post(
       );
     }
 
-    if (!c.req.header("content-type")?.toLowerCase().startsWith("multipart/form-data")) {
-      return c.json({ status: "error", message: "A multipart file is required" }, 400);
+    if (
+      !c.req
+        .header("content-type")
+        ?.toLowerCase()
+        .startsWith("multipart/form-data")
+    ) {
+      return c.json(
+        { status: "error", message: "A multipart file is required" },
+        400,
+      );
+    }
+
+    const declared = Number(c.req.header("content-length") ?? 0);
+    if (declared > 10 * 1024 * 1024 + 1024) {
+      return c.json(
+        { status: "error", message: "File exceeds the 10 MiB limit" },
+        413,
+      );
     }
 
     let form: FormData;
     try {
       form = await c.req.raw.formData();
     } catch {
-      return c.json({ status: "error", message: "Invalid multipart form data" }, 400);
+      return c.json(
+        { status: "error", message: "Invalid multipart form data" },
+        400,
+      );
     }
 
     const fileFields = form.getAll("file");
@@ -77,13 +100,26 @@ app.post(
     form.forEach((value) => {
       if (value instanceof File) fileCount++;
     });
-    if (fileFields.length !== 1 || !(fileFields[0] instanceof File) || fileCount !== 1) {
-      return c.json({ status: "error", message: "A single file in the 'file' field is required" }, 400);
+    if (
+      fileFields.length !== 1 ||
+      !(fileFields[0] instanceof File) ||
+      fileCount !== 1
+    ) {
+      return c.json(
+        {
+          status: "error",
+          message: "A single file in the 'file' field is required",
+        },
+        400,
+      );
     }
 
     const file = fileFields[0];
     if (file.size > 10 * 1024 * 1024) {
-      return c.json({ status: "error", message: "File exceeds the 10 MiB limit" }, 413);
+      return c.json(
+        { status: "error", message: "File exceeds the 10 MiB limit" },
+        413,
+      );
     }
 
     const key = `uploads/${crypto.randomUUID()}`;
@@ -110,6 +146,13 @@ app.post(
   },
 );
 
-mountShimRoutes(app, buildRouteEntries());
+const routeDefinitions = buildRouteEntries({
+  prisma: {},
+  cache: null,
+  jwt: {},
+  bcrypt: {},
+});
+
+mountShimRoutes(app, routeDefinitions, (c) => buildRouteEntries(getApp(c)));
 
 export default app as unknown as import("@cloudflare/workers-types").ExportedHandler<Env>;
