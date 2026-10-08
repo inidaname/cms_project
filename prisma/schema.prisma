@@ -191,6 +191,7 @@ model Product {
   variation         Boolean?           @default(false)
   status            ProductStatus?     @default(Available)
   isBundle          Boolean            @default(false)
+  isFeatured        Boolean            @default(false)
   min_items         Int?               @default(1)
   max_items         Int?               @default(1)
   // If it's a bundle, these are the items available to be picked

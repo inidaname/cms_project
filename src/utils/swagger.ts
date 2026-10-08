@@ -160,6 +160,7 @@ export const swaggerOption: any = {
             tenant_id: { type: "string", format: "uuid" },
             status: { $ref: "#/components/schemas/ProductStatus" },
             isBundle: { type: "boolean" },
+            isFeatured: { type: "boolean" },
             min_items: { type: "integer", nullable: true as unknown as undefined },
             max_items: { type: "integer", nullable: true as unknown as undefined },
             createdAt: { type: "string", format: "date-time" },

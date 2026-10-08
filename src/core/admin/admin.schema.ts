@@ -873,6 +873,7 @@ export const ProductSchemas = {
         variation: { type: "boolean" },
         status: { type: "string", enum: ["Available", "OutOfStock", "Discontinued"] },
         isBundle: { type: "boolean" },
+        isFeatured: { type: "boolean" },
         min_items: { type: "integer" },
         max_items: { type: "integer" },
       },
@@ -905,6 +906,7 @@ export const ProductSchemas = {
         variation: { type: "boolean" },
         status: { type: "string", enum: ["Available", "OutOfStock", "Discontinued"] },
         isBundle: { type: "boolean" },
+        isFeatured: { type: "boolean" },
       },
     },
     response: {

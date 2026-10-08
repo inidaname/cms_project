@@ -182,6 +182,7 @@ Table Product {
   variation Boolean [default: false]
   status ProductStatus [default: 'Available']
   isBundle Boolean [not null, default: false]
+  isFeatured Boolean [not null, default: false]
   min_items Int [default: 1]
   max_items Int [default: 1]
   bundleComponents ProductComponent [not null]

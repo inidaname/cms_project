@@ -313,6 +313,7 @@ export class AdminService {
             variation: data.variation,
             status: data.status,
             isBundle: data.isBundle,
+            isFeatured: data.isFeatured,
             min_items: data.min_items,
             max_items: data.max_items,
           },
@@ -330,6 +331,7 @@ export class AdminService {
             variation: data.variation,
             status: data.status,
             isBundle: data.isBundle,
+            isFeatured: data.isFeatured,
           },
         });
 

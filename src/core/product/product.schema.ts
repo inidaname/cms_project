@@ -19,6 +19,7 @@ export const ProductRouteSchemas = {
         quantity: { type: "number" },
         variation: { type: "boolean" },
         isBundle: { type: "boolean" },
+        isFeatured: { type: "boolean" },
         min_items: { type: "number" },
         max_items: { type: "number" },
       },

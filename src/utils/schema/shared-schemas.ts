@@ -71,6 +71,7 @@ export const SharedSchemas = {
         variation: { type: "boolean" },
         status: { type: "string", enum: ["Available", "OutOfStock", "Discontinued"] },
         isBundle: { type: "boolean" },
+        isFeatured: { type: "boolean" },
         min_items: { type: "integer", nullable: true },
         max_items: { type: "integer", nullable: true },
         createdAt: { type: "string", format: "date-time" },
