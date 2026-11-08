@@ -17,17 +17,6 @@ const PaymentSchema = {
   },
 };
 
-const VirtualAccountSchema = {
-  type: "object",
-  properties: {
-    account_number: { type: "string" },
-    bank_name: { type: "string" },
-    provider: { type: "string" },
-    short_code: { type: "string", nullable: true },
-    expires_at: { type: "string", nullable: true },
-  },
-};
-
 const PaginationMetadataSchema = {
   type: "object",
   properties: {
@@ -41,31 +30,24 @@ const PaginationMetadataSchema = {
 };
 
 export const PaymentSchemas = {
-  initiateCardPayment: {
-    summary: "Initiate Card Payment",
-    description: "Start a card payment through Finecore. May require OTP or 3DS authentication.",
+  initiateCheckoutPayment: {
+    summary: "Create Checkout Link",
+    description:
+      "Create a Finecore hosted checkout session that supports all payment methods (card, bank transfer, USSD, QR code). Returns a checkout_url for the customer to complete payment. Payment status is confirmed asynchronously via the Finecore webhook.",
     tags: ["Payments"],
     security: [
       { bearerAuth: [], apiKey: [] },
     ],
     body: {
       type: "object",
-      required: ["cart_id", "card_details"],
+      required: ["cart_id", "success_url", "cancel_url"],
       properties: {
         cart_id: { type: "string", format: "uuid", description: "The cart to pay for" },
         amount: { type: "number", format: "double", description: "Amount in Naira (optional, defaults to cart total)" },
         reference: { type: "string", description: "Custom payment reference (optional)" },
+        success_url: { type: "string", format: "uri", description: "URL to redirect the customer after successful payment" },
+        cancel_url: { type: "string", format: "uri", description: "URL to redirect the customer if payment is cancelled or abandoned" },
         metadata: { type: "object", additionalProperties: true, description: "Additional metadata" },
-        card_details: {
-          type: "object",
-          required: ["pan", "expiry_date", "cvv"],
-          properties: {
-            pan: { type: "string", description: "Card number" },
-            expiry_date: { type: "string", description: "Card expiry (MMYY)" },
-            cvv: { type: "string", description: "Card CVV" },
-            pin: { type: "string", description: "Card PIN (optional but recommended)" },
-          },
-        },
       },
     },
     response: {
@@ -79,159 +61,15 @@ export const PaymentSchemas = {
             type: "object",
             properties: {
               payment: PaymentSchema,
-              finecore: {
+              checkout: {
                 type: "object",
                 properties: {
-                  transaction_reference: { type: "string" },
-                  requires_authentication: { type: "boolean" },
-                  auth_type: { type: "string" },
-                  next_action: { type: "string" },
+                  checkoutUrl: { type: "string", description: "Hosted checkout page URL to redirect the customer to" },
+                  checkoutToken: { type: "string", description: "Checkout session token" },
+                  amount: { type: "number" },
+                  currency: { type: "string" },
+                  expiresAt: { type: "string", format: "date-time", description: "When the checkout session expires" },
                 },
-              },
-              requiresAuth: { type: "boolean" },
-              authType: { type: "string" },
-              nextAction: { type: "string" },
-            },
-          },
-        },
-      },
-    },
-  },
-
-  approveCardPayment: {
-    summary: "Approve Card Payment with OTP",
-    description: "Submit OTP to complete card payment after receiving verification code.",
-    tags: ["Payments"],
-    security: [
-      { bearerAuth: [], apiKey: [] },
-    ],
-    body: {
-      type: "object",
-      required: ["transaction_reference", "otp"],
-      properties: {
-        transaction_reference: { type: "string", description: "Finecore transaction reference" },
-        otp: { type: "string", description: "One-time password from SMS" },
-      },
-    },
-    response: {
-      200: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          data: {
-            type: "object",
-            properties: {
-              payment: PaymentSchema,
-              finecore: {
-                type: "object",
-                properties: {
-                  transaction_reference: { type: "string" },
-                  status: { type: "string" },
-                  amount: { type: "string" },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-
-  initiateUSSDPayment: {
-    summary: "Initiate USSD Payment",
-    description: "Generate a USSD code for customer to dial and complete payment.",
-    tags: ["Payments"],
-    security: [
-      { bearerAuth: [], apiKey: [] },
-    ],
-    body: {
-      type: "object",
-      required: ["cart_id", "bank_code"],
-      properties: {
-        cart_id: { type: "string", format: "uuid", description: "The cart to pay for" },
-        amount: { type: "number", format: "double", description: "Amount in Naira (optional)" },
-        bank_code: { type: "string", description: "Bank code (e.g., GTB, FBN)" },
-        metadata: { type: "object", additionalProperties: true },
-      },
-    },
-    response: {
-      201: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          data: {
-            type: "object",
-            properties: {
-              payment: PaymentSchema,
-              ussd: {
-                type: "object",
-                properties: {
-                  shortCode: { type: "string" },
-                  reference: { type: "string" },
-                  transactionRef: { type: "string" },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-
-  generateVirtualAccount: {
-    summary: "Generate Virtual Account",
-    description: "Create a virtual bank account for customer to transfer funds into.",
-    tags: ["Payments"],
-    security: [
-      { bearerAuth: [], apiKey: [] },
-    ],
-    body: {
-      type: "object",
-      required: ["cart_id", "provider"],
-      properties: {
-        cart_id: { type: "string", format: "uuid", description: "The cart to pay for" },
-        amount: { type: "number", format: "double", description: "Expected amount (optional)" },
-        provider: { type: "string", description: "Bank provider (e.g., WEMA, GTB)" },
-        metadata: { type: "object", additionalProperties: true },
-      },
-    },
-    response: {
-      201: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          data: {
-            type: "object",
-            properties: {
-              payment: PaymentSchema,
-              virtualAccount: VirtualAccountSchema,
-            },
-          },
-        },
-      },
-    },
-  },
-
-  getUSSDBanks: {
-    summary: "Get USSD Banks",
-    description: "Retrieve list of banks that support USSD payments.",
-    tags: ["Payments"],
-    security: [
-      { bearerAuth: [], apiKey: [] },
-    ],
-    response: {
-      200: {
-        type: "object",
-        properties: {
-          status: { type: "string" },
-          data: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                cbn_code: { type: "string" },
-                code: { type: "string" },
-                name: { type: "string" },
               },
             },
           },

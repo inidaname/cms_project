@@ -238,16 +238,14 @@ export const SharedSchemas = {
       },
     },
 
-    FinecoreVirtualAccount: {
-      $id: "finecoreVirtualAccount",
+    FinecoreCheckout: {
+      $id: "finecoreCheckout",
       type: "object",
       properties: {
-        account_name: { type: "string" },
-        account_number: { type: "string" },
-        bank_name: { type: "string" },
-        provider: { type: "string" },
+        checkoutUrl: { type: "string", description: "Hosted checkout page URL to redirect the customer to" },
+        checkoutToken: { type: "string" },
         amount: { type: "number" },
-        validity_period_mins: { type: "integer" },
+        currency: { type: "string" },
         expiresAt: { type: "string", format: "date-time" },
       },
     },
