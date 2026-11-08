@@ -34,7 +34,7 @@ export const swaggerOption: any = {
       { name: "Products", description: "Product CRUD, variations, and bundles" },
       { name: "Carts", description: "Shopping cart management" },
       { name: "Checkout", description: "Checkout and order management" },
-      { name: "Payments", description: "Payment processing via Finecore (card, USSD, virtual account)" },
+      { name: "Payments", description: "Payment processing via Finecore hosted checkout links (card, bank transfer, USSD, QR code)" },
       { name: "Subscribers", description: "Email marketing subscribers and lists" },
       { name: "Webhooks", description: "Webhook endpoints for external services" },
       { name: "Admin", description: "Admin dashboard, analytics, team management, projects, settings, and audit logs" },
@@ -327,37 +327,14 @@ export const swaggerOption: any = {
           },
         },
 
-        FinecoreCardPayment: {
+        FinecoreCheckout: {
           type: "object",
           properties: {
-            transaction_reference: { type: "string" },
-            requires_authentication: { type: "boolean" },
-            auth_type: { type: "string", enum: ["OTP", "3DS"], nullable: true as unknown as undefined },
-                next_action: { type: "string" },
-            acs_url: { type: "string", nullable: true as unknown as undefined, description: "3DS redirect URL" },
-          },
-        },
-
-        FinecoreUSSDPayment: {
-          type: "object",
-          properties: {
-            bank_short_code: { type: "string" },
-            reference: { type: "string" },
-            transaction_reference: { type: "string" },
-            response_code: { type: "string" },
-          },
-        },
-
-        FinecoreVirtualAccount: {
-          type: "object",
-          properties: {
-            account_name: { type: "string" },
-            account_number: { type: "string" },
-            bank_name: { type: "string" },
-            provider: { type: "string" },
-            amount: { type: "number" },
-            validity_period_mins: { type: "integer", description: "Minutes until account expires" },
-            expiresAt: { type: "string", format: "date-time" },
+            checkoutUrl: { type: "string", description: "Hosted checkout page URL to redirect the customer to" },
+            checkoutToken: { type: "string", description: "Checkout session token" },
+            amount: { type: "number", format: "double" },
+            currency: { type: "string", example: "NGN" },
+            expiresAt: { type: "string", format: "date-time", description: "When the checkout session expires" },
           },
         },
 

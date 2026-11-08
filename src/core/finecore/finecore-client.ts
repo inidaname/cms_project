@@ -1,13 +1,7 @@
 import {
   FinecoreConfig,
-  CardPaymentInput,
-  USSDPaymentInput,
-  VirtualAccountInput,
-  FinecoreCardPaymentResponse,
-  FinecoreOTPApprovalResponse,
-  FinecoreUSSDResponse,
-  FinecoreVirtualAccountResponse,
-  USSDBank,
+  CheckoutSessionInput,
+  FinecoreCheckoutResponse,
 } from "./types";
 
 export class FinecoreClient {
@@ -52,87 +46,16 @@ export class FinecoreClient {
     return data as unknown as T;
   }
 
-  async initiateCardPayment(
-    input: CardPaymentInput
-  ): Promise<FinecoreCardPaymentResponse> {
-    return this.request<FinecoreCardPaymentResponse>("/payments/card", {
+  async createCheckoutSession(
+    input: CheckoutSessionInput
+  ): Promise<FinecoreCheckoutResponse> {
+    return this.request<FinecoreCheckoutResponse>("/payments/checkout", {
       method: "POST",
       body: JSON.stringify({
         ...input,
         currency: input.currency || "NGN",
       }),
     });
-  }
-
-  async approveCardPayment(
-    otp: string,
-    transactionReference: string
-  ): Promise<FinecoreOTPApprovalResponse> {
-    return this.request<FinecoreOTPApprovalResponse>(
-      "/payments/card/approve",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          otp,
-          transaction_reference: transactionReference,
-        }),
-      }
-    );
-  }
-
-  async resendCardOTP(
-    transactionReference: string
-  ): Promise<FinecoreCardPaymentResponse> {
-    return this.request<FinecoreCardPaymentResponse>(
-      "/payments/card/resend-otp",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          transaction_reference: transactionReference,
-        }),
-      }
-    );
-  }
-
-  async initiateUSSDPayment(
-    input: USSDPaymentInput
-  ): Promise<FinecoreUSSDResponse> {
-    return this.request<FinecoreUSSDResponse>("/payments/ussd", {
-      method: "POST",
-      body: JSON.stringify({
-        ...input,
-        currency_code: input.currency_code || "566",
-      }),
-    });
-  }
-
-  async getUSSDBanks(): Promise<{ success: boolean; data: USSDBank[] }> {
-    return this.request<{ success: boolean; data: USSDBank[] }>(
-      "/payments/ussd/banks"
-    );
-  }
-
-  async getUSSDBankByCode(
-    code: string
-  ): Promise<{ success: boolean; data: USSDBank }> {
-    return this.request<{ success: boolean; data: USSDBank }>(
-      `/payments/ussd/banks/${code}`
-    );
-  }
-
-  async generateVirtualAccount(
-    input: VirtualAccountInput
-  ): Promise<FinecoreVirtualAccountResponse> {
-    return this.request<FinecoreVirtualAccountResponse>(
-      "/payments/virtual-account/generate",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          ...input,
-          currency_code: input.currency_code || "566",
-        }),
-      }
-    );
   }
 }
 
