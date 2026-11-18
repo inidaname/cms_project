@@ -9,6 +9,10 @@ export class PaymentService {
   }
 
   async savePayment(data: PaymentInput) {
+    // Defensive: a payment record without a tenant scope must never be written.
+    if (!("tenant_id" in data) || !(data as any).tenant_id) {
+      throw new Error("tenant_id is required to save a payment");
+    }
     return this.prisma.payments.create({
       data,
       include: { paidBy: true, paidFor: true, paidTo: true },
@@ -46,9 +50,9 @@ export class PaymentService {
     };
   }
 
-  async getPaymentById(id: string) {
+  async getPaymentById(id: string, tenant_id: string) {
     return await this.prisma.payments.findUnique({
-      where: { id },
+      where: { id, tenant_id },
       include: { paidBy: true, paidFor: true, paidTo: true },
     });
   }

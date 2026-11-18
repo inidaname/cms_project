@@ -67,10 +67,12 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
       const body = request.body as Omit<SubscriberInput, "tenant_id" | "status">;
 
       try {
+        // Ownership and status are server-derived; the body cannot override them.
         const subscriber = await subscriberService.createSubscription({
           tenant_id,
           status: "ACTIVE",
-          ...body,
+          email: (body as any).email,
+          name: (body as any).name,
         } as any);
         return sendSuccess(reply, StatusCode.SuccessCreated, subscriber, CASSuccessMessage.DATA_CREATED, CASSuccessCode.DATA_CREATED);
       } catch (error: any) {
@@ -162,7 +164,11 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
       const body = request.body as { name: string };
 
       try {
-        const list = await listService.createList({ tenant_id, ...body } as any);
+        // Ownership is server-derived; the body cannot override tenant_id.
+        const list = await listService.createList({
+          tenant_id,
+          name: (body as any).name,
+        } as any);
         return sendSuccess(reply, StatusCode.SuccessCreated, list, CASSuccessMessage.DATA_CREATED, CASSuccessCode.DATA_CREATED);
       } catch (error: any) {
         return sendError(reply, StatusCode.ClientErrorBadRequest, error.message, CASErrorCode.INVALID_FIELD_FORMAT);
@@ -296,9 +302,13 @@ export const emailMarketingHandler: SubscriberHandler = (app) => {
       const body = request.body as CampaignInput;
 
       try {
+        // Ownership is server-derived; the body cannot override tenant_id.
         const campaign = await campaignService.createCampaign({
           tenant_id,
-          ...body,
+          subject: (body as any).subject,
+          htmlBody: (body as any).htmlBody,
+          textBody: (body as any).textBody,
+          scheduledAt: (body as any).scheduledAt,
         } as any);
         return sendSuccess(reply, StatusCode.SuccessCreated, campaign, CASSuccessMessage.DATA_CREATED, CASSuccessCode.DATA_CREATED);
       } catch (error: any) {

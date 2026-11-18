@@ -4,18 +4,24 @@ import { CASErrorCode, CASErrorMessage } from "../../utils/enums";
 import type { WorkerEnv } from "../types";
 import { getApp } from "../lib/app-context";
 
-const PUBLIC_ROUTES = [
-  "/docs",
-  "/docs/json",
+// Public routes exempt from tenant resolution. Kept as exact path matches so
+// an exemption can never silently extend to sibling or nested routes. Must
+// mirror PUBLIC_ROUTES in src/plugins/check-tenant.ts (Node).
+// Documented exemptions:
+// - /health                    : liveness probe (no tenant context)
+// - /webhook/finecore          : provider callback; authenticated by signature
+//                                verification inside the handler
+// - /tenants/onboard           : public tenant onboarding
+// - /super-admin/login, /super-admin/refresh-token : platform login flows
+// - /admin/team/invite/accept  : token-authenticated invite acceptance
+const PUBLIC_ROUTES = new Set([
   "/health",
-  "/ping",
-  "/openapi.json",
-  "/webhook",
+  "/webhook/finecore",
   "/tenants/onboard",
   "/super-admin/login",
   "/super-admin/refresh-token",
   "/admin/team/invite/accept",
-];
+]);
 
 const ADMIN_ROUTES_PREFIX = "/admin";
 const SUPER_ADMIN_ROUTES_PREFIX = "/super-admin";
@@ -27,7 +33,7 @@ export function authResponse(c: Context, status: number, message: string, code: 
 export async function checkTenant(c: Context<WorkerEnv>, next: Next) {
   const url = new URL(c.req.url).pathname;
 
-  if (PUBLIC_ROUTES.some((route) => url.startsWith(route))) {
+  if (PUBLIC_ROUTES.has(url)) {
     return next();
   }
 
@@ -84,12 +90,18 @@ export async function checkTenant(c: Context<WorkerEnv>, next: Next) {
     );
   }
 
+  // Bearer-token verification with tenant binding (applies to every protected
+  // route, not only /admin): a token must belong to the tenant resolved from
+  // the x-api-key header. Mirrors plugins/check-tenant.ts (Node).
+  const authHeader = c.req.header("authorization");
+
   if (url.startsWith(ADMIN_ROUTES_PREFIX)) {
-    const authHeader = c.req.header("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return authResponse(c, StatusCode.ClientErrorUnauthorized, "Missing or invalid authorization header", CASErrorCode.UNAUTHORIZED_ACCESS);
     }
+  }
 
+  if (authHeader?.startsWith("Bearer ")) {
     try {
       const decoded = await (jwt.verify as any)(authHeader.substring(7));
 
@@ -97,7 +109,7 @@ export async function checkTenant(c: Context<WorkerEnv>, next: Next) {
         return authResponse(c, StatusCode.ClientErrorForbidden, "Token does not belong to this tenant", CASErrorCode.FORBIDDEN);
       }
 
-      if (!["OWNER", "ADMIN"].includes(decoded.role ?? "")) {
+      if (url.startsWith(ADMIN_ROUTES_PREFIX) && !["OWNER", "ADMIN"].includes(decoded.role ?? "")) {
         return authResponse(c, StatusCode.ClientErrorForbidden, "Admin access required", CASErrorCode.FORBIDDEN);
       }
 

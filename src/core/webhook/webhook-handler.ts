@@ -25,6 +25,8 @@ export const webhookHandler = (deps: WebhookHandlerDeps) => {
       const timestamp = request.headers["x-webhook-timestamp"];
       const rawBody = request.rawBody as string;
 
+      // Signature, timestamp and raw body are mandatory: the webhook is a
+      // public route, so verification is the only authentication it has.
       if (!rawBody) {
         return reply.status(StatusCode.ClientErrorBadRequest).send({
           status: "error",
@@ -32,56 +34,80 @@ export const webhookHandler = (deps: WebhookHandlerDeps) => {
         });
       }
 
+      if (!signature || !timestamp) {
+        return reply.status(StatusCode.ClientErrorUnauthorized).send({
+          status: "error",
+          message: "Missing webhook signature or timestamp",
+        });
+      }
+
       const payload = request.body as FinecoreWebhookPayload;
       const { event, data } = payload;
 
+      // Resolve the tenant deterministically: prefer the tenant embedded in
+      // the provider payload metadata, otherwise derive it from the referenced
+      // payment. An arbitrary-config fallback is never used.
       let tenantId: string | null = null;
 
       if (data.metadata?.tenant_id) {
         tenantId = data.metadata.tenant_id as string;
-      } else if (data.merchant_id) {
-        const config = await prisma.tenantFinecoreConfig.findFirst({
+      } else if (data.reference) {
+        const payment = await prisma.payments.findFirst({
           where: {
-            apiKey: {
-              not: "",
-            },
+            OR: [
+              { reference: data.reference },
+              { finecoreTransactionRef: data.reference },
+            ],
           },
+          select: { tenant_id: true },
         });
-        tenantId = config?.tenant_id || null;
+        tenantId = payment?.tenant_id || null;
       }
 
-      if (tenantId) {
-        const webhookSecret = await getFinecoreWebhookSecret(tenantId, prisma);
+      if (!tenantId) {
+        return reply.status(StatusCode.ClientErrorUnauthorized).send({
+          status: "error",
+          message: "Unable to resolve webhook tenant",
+        });
+      }
 
-        if (webhookSecret && signature && timestamp) {
-          const isValid = await verifySignature(rawBody, signature, webhookSecret);
-          if (!isValid) {
-            return reply.status(StatusCode.ClientErrorUnauthorized).send({
-              status: "error",
-              message: "Invalid webhook signature",
-            });
-          }
+      const webhookSecret = await getFinecoreWebhookSecret(tenantId, prisma);
 
-          const timeDiff = Math.abs(
-            Date.now() - new Date(timestamp).getTime()
-          );
-          if (timeDiff > 5 * 60 * 1000) {
-            return reply.status(StatusCode.ClientErrorBadRequest).send({
-              status: "error",
-              message: "Webhook timestamp expired",
-            });
-          }
-        }
+      if (!webhookSecret) {
+        return reply.status(StatusCode.ClientErrorUnauthorized).send({
+          status: "error",
+          message: "Webhook signature verification unavailable",
+        });
+      }
+
+      const isValid = await verifySignature(rawBody, signature, webhookSecret);
+      if (!isValid) {
+        return reply.status(StatusCode.ClientErrorUnauthorized).send({
+          status: "error",
+          message: "Invalid webhook signature",
+        });
+      }
+
+      const timeDiff = Math.abs(
+        Date.now() - new Date(timestamp).getTime()
+      );
+      if (timeDiff > 5 * 60 * 1000) {
+        return reply.status(StatusCode.ClientErrorBadRequest).send({
+          status: "error",
+          message: "Webhook timestamp expired",
+        });
       }
 
       const { reference, status } = data;
 
+      // Every lookup and mutation below is constrained to the verified tenant.
       const existingPayment = await prisma.payments.findFirst({
         where: {
           OR: [
             { reference: reference },
             { finecoreTransactionRef: reference },
           ],
+          tenant_id: tenantId,
         },
         include: {
           paidFor: true,
@@ -103,12 +129,18 @@ export const webhookHandler = (deps: WebhookHandlerDeps) => {
 
         if (status === "COMPLETED" && existingPayment.paidFor) {
           await prisma.cart.update({
-            where: { id: existingPayment.paidFor.cart_id },
+            where: {
+              id: existingPayment.paidFor.cart_id,
+              tenant_id: tenantId,
+            },
             data: { status: "Checkedout" },
           });
 
           await prisma.sales.update({
-            where: { cart_id: existingPayment.paidFor.cart_id },
+            where: {
+              cart_id: existingPayment.paidFor.cart_id,
+              tenant_id: tenantId,
+            },
             data: { status: "Paid" },
           });
         }

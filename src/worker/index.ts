@@ -41,8 +41,6 @@ app.use("*", async (c, next) => {
   }
 });
 
-app.use("*", rateLimit());
-
 app.get("/health", (c) => c.json({ ok: true, ts: Date.now() }));
 
 app.get("/health/db", async (c) => {
@@ -52,6 +50,11 @@ app.get("/health/db", async (c) => {
 });
 
 app.use("*", checkTenant);
+
+// Rate limiting runs after checkTenant so per-role budgets (e.g. the elevated
+// /admin tier) can read the authenticated user. checkTenant passes public
+// routes through to this middleware, so coverage is unchanged.
+app.use("*", rateLimit());
 
 app.post(
   "/upload",

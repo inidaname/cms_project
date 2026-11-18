@@ -2,18 +2,28 @@ import fp from "fastify-plugin";
 import StatusCode from "status-code-enum";
 import { CASErrorCode, CASErrorMessage } from "../utils/enums";
 
-const PUBLIC_ROUTES = [
+// Public routes exempt from tenant resolution. Kept as exact path matches so
+// an exemption can never silently extend to sibling or nested routes.
+// Documented exemptions:
+// - /docs, /docs/json, /documentation  : API documentation (no tenant context)
+// - /health, /ping                     : liveness probes (no tenant context)
+// - /webhook/finecore                  : provider callback; authenticated by
+//                                        signature verification inside the handler
+// - /tenants/onboard                   : public tenant onboarding
+// - /super-admin/login, /super-admin/refresh-token : platform login flows
+// - /admin/team/invite/accept          : token-authenticated invite acceptance
+const PUBLIC_ROUTES = new Set([
   "/docs",
   "/docs/json",
   "/health",
   "/ping",
   "/documentation",
-  "/webhook",
+  "/webhook/finecore",
   "/tenants/onboard",
   "/super-admin/login",
   "/super-admin/refresh-token",
   "/admin/team/invite/accept",
-];
+]);
 
 const ADMIN_ROUTES_PREFIX = "/admin";
 const SUPER_ADMIN_ROUTES_PREFIX = "/super-admin";
@@ -23,8 +33,9 @@ const tenantResolver: PluginType = async (fastify) => {
 
   fastify.addHook("preHandler", async (req, reply) => {
     const url = req.raw.url ?? "";
+    const pathname = url.split("?")[0].split("#")[0];
 
-    if (PUBLIC_ROUTES.some((route) => url.startsWith(route))) {
+    if (PUBLIC_ROUTES.has(pathname)) {
       return;
     }
 
@@ -97,8 +108,12 @@ const tenantResolver: PluginType = async (fastify) => {
       });
     }
 
+    // Bearer-token verification with tenant binding (applies to every
+    // protected route, not only /admin): a token must belong to the tenant
+    // resolved from the x-api-key header.
+    const authHeader = req.headers["authorization"] as string | undefined;
+
     if (url.startsWith(ADMIN_ROUTES_PREFIX)) {
-      const authHeader = req.headers["authorization"] as string | undefined;
       if (!authHeader?.startsWith("Bearer ")) {
         return reply.status(StatusCode.ClientErrorUnauthorized).send({
           message: "Missing or invalid authorization header",
@@ -106,10 +121,11 @@ const tenantResolver: PluginType = async (fastify) => {
           status: "error",
         });
       }
+    }
 
+    if (authHeader?.startsWith("Bearer ")) {
       try {
-        const token = authHeader.substring(7);
-        const decoded = fastify.jwt.verify(token) as any;
+        const decoded = fastify.jwt.verify(authHeader.substring(7)) as any;
 
         if (decoded.tenant_id !== tenant.id) {
           return reply.status(StatusCode.ClientErrorForbidden).send({
@@ -119,7 +135,7 @@ const tenantResolver: PluginType = async (fastify) => {
           });
         }
 
-        if (!["OWNER", "ADMIN"].includes(decoded.role)) {
+        if (url.startsWith(ADMIN_ROUTES_PREFIX) && !["OWNER", "ADMIN"].includes(decoded.role)) {
           return reply.status(StatusCode.ClientErrorForbidden).send({
             message: "Admin access required",
             code: CASErrorCode.FORBIDDEN,

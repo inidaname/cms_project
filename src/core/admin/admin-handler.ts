@@ -1188,9 +1188,16 @@ export const adminHandler = (app: FastifyInstance) => {
     sendNotification: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
+        // Ownership is server-derived; the body cannot override tenant_id.
+        const { user_id, title, body, data, type, priority } = request.body;
         const result = await notificationService.createNotification({
           tenant_id: request.tenant.id,
-          ...request.body,
+          user_id,
+          title,
+          body,
+          data,
+          type,
+          priority,
         });
         return reply.status(201).send({ status: "success", data: result });
       } catch (error: any) {
@@ -1219,9 +1226,15 @@ export const adminHandler = (app: FastifyInstance) => {
     createTemplate: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
+        // Ownership is server-derived; the body cannot override tenant_id.
+        const { name, type, subject, body, variables } = request.body;
         const result = await notificationService.createTemplate({
           tenant_id: request.tenant.id,
-          ...request.body,
+          name,
+          type,
+          subject,
+          body,
+          variables,
         });
         return reply.status(201).send({ status: "success", data: result });
       } catch (error: any) {

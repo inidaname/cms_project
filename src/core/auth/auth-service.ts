@@ -28,11 +28,21 @@ export class AuthService {
   }
 
   async updatePassword(
-    data: { user_id: string; hashedPassword: string; store_id: string },
+    data: {
+      user_id: string;
+      hashedPassword: string;
+      store_id: string;
+      tenant_id?: string;
+    },
   ) {
+    // Tenant scope: constrain both writes by the token record's tenant_id
+    // when available (the token row is tenant-owned).
     return await Promise.all([
       this.prisma.user.update({
-        where: { id: data.user_id },
+        where: {
+          id: data.user_id,
+          ...(data.tenant_id && { tenant_id: data.tenant_id }),
+        },
         data: { password: data.hashedPassword },
       }),
       this.prisma.passwordToken.update({

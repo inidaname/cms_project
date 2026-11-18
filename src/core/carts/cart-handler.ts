@@ -95,10 +95,17 @@ export const cartsHandler: CartsHandler = (app) => {
         user: { id },
         body,
       } = request;
+      // Only server-derived ownership fields are authoritative; the body may
+      // supply cart content fields only.
       const cart = await service.createCart({
         tenant_id,
         user_id: id,
-        ...body,
+        totalValue: 0,
+        notes: body?.notes,
+        recipientName: body?.recipientName,
+        recipientPhone: body?.recipientPhone,
+        deliveryAddress: body?.deliveryAddress,
+        deliveryType: body?.deliveryType,
       });
 
       return reply.status(StatusCode.SuccessCreated).send({

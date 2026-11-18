@@ -13,16 +13,19 @@ export class UserService {
   }
 
   async getAllUsers(page = 1, limit = 10, filter?: string, tenant_id?: string) {
-    const whereClause: Prisma.UserWhereInput = filter
-      ? {
-          OR: [
-            { email: { contains: filter, mode: "insensitive" } },
-            { name: { contains: filter, mode: "insensitive" } },
-            { phone: { contains: filter, mode: "insensitive" } },
-          ],
-          tenant_id,
-        }
-      : {};
+    // tenant_id is always enforced; the filter is an additional condition.
+    const whereClause: Prisma.UserWhereInput = {
+      tenant_id,
+      ...(filter
+        ? {
+            OR: [
+              { email: { contains: filter, mode: "insensitive" } },
+              { name: { contains: filter, mode: "insensitive" } },
+              { phone: { contains: filter, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
 
     const skip = (page - 1) * limit;
 
@@ -52,7 +55,19 @@ export class UserService {
   }
 
   async updateUser(data: Omit<UserInput, "agreed">, id: string) {
-    return await this.prisma.user.update({ where: { id }, data });
+    // Whitelist self-service fields: role, tenant_id, id and password are
+    // never assignable through this update path.
+    const allowed = ["email", "name", "phone", "agreed"] as const;
+    const payload: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (data[key as keyof typeof data] !== undefined) {
+        payload[key] = data[key as keyof typeof data];
+      }
+    }
+    return await this.prisma.user.update({
+      where: { id },
+      data: payload as any,
+    });
   }
 
   async getUserByEmailOrPhone(filter: string, tenant_id: string) {
@@ -65,16 +80,19 @@ export class UserService {
   }
 
   async countTenantsUsers(tenant_id: string, filter?: string) {
-    const where: Prisma.UserWhereInput = filter
-      ? {
-          OR: [
-            { email: { contains: filter, mode: "insensitive" } },
-            { name: { contains: filter, mode: "insensitive" } },
-            { phone: { contains: filter, mode: "insensitive" } },
-          ],
-          tenant_id,
-        }
-      : {};
+    // tenant_id is always enforced; the filter is an additional condition.
+    const where: Prisma.UserWhereInput = {
+      tenant_id,
+      ...(filter
+        ? {
+            OR: [
+              { email: { contains: filter, mode: "insensitive" } },
+              { name: { contains: filter, mode: "insensitive" } },
+              { phone: { contains: filter, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
     return await this.prisma.user.count({ where });
   }
 

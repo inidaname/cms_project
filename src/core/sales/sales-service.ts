@@ -8,7 +8,7 @@ export class SalesService {
   }
 
   async findSaleByCart(cart_id: string, tenant_id: string) {
-    return this.prisma.sales.findUnique({ where: { cart_id } });
+    return this.prisma.sales.findUnique({ where: { cart_id, tenant_id } });
   }
 
   async checkout(data: {

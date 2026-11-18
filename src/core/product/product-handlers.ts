@@ -39,7 +39,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const variation = await service.addVariation({ ...data, product_id });
+      const variation = await service.addVariation({ ...data, product_id }, id);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_UPDATED,
@@ -68,7 +68,7 @@ export const productHandler: Producthanlder = (app) => {
       const childProductIds = body.map((item) => item.child_id);
       const [isParentOwner, isBundle, areChildrenValid] = await Promise.all([
         service.isTenantProduct(tenent_id, product_id),
-        service.isProductBundle(product_id),
+        service.isProductBundle(product_id, tenent_id),
         service.verifyTenantProducts(tenent_id, childProductIds),
       ]);
 
@@ -109,10 +109,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const product = await service.editProduct(product_id, {
-        ...data,
-        tenant_id: id,
-      });
+      const product = await service.editProduct(product_id, id, data);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_UPDATED,
@@ -135,7 +132,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const variation = await service.editVariation(variation_id, data);
+      const variation = await service.editVariation(variation_id, id, data);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_UPDATED,
@@ -178,7 +175,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const product = await service.getProductById(product_id);
+      const product = await service.getProductById(product_id, id);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_RETRIEVED,
@@ -200,7 +197,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const product = await service.getProductVariationById(variation_id);
+      const product = await service.getProductVariationById(variation_id, id);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_RETRIEVED,
@@ -222,7 +219,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const product = await service.getProductVariation(product_id);
+      const product = await service.getProductVariation(product_id, id);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_RETRIEVED,
@@ -244,7 +241,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const product = await service.removeProduct(product_id);
+      const product = await service.removeProduct(product_id, id);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_DELETED,
@@ -266,7 +263,7 @@ export const productHandler: Producthanlder = (app) => {
         };
       }
 
-      const product = await service.removeVariation(variation_id);
+      const product = await service.removeVariation(variation_id, id);
 
       return reply.status(StatusCode.SuccessOK).send({
         message: CASSuccessMessage.DATA_DELETED,

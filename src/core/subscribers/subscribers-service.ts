@@ -340,8 +340,21 @@ export class CampaignService {
     let subscribersToEmail;
 
     if (listId) {
+      // Tenant scope: the list must belong to the tenant, and defensively
+      // require the subscriber rows themselves to be tenant-owned.
+      const tenantList = await this.prisma.list.findFirst({
+        where: { id: listId, tenant_id },
+        select: { id: true },
+      });
+      if (!tenantList) {
+        throw new Error("List not found.");
+      }
+
       const listSubscribers = await this.prisma.listSubscriber.findMany({
-        where: { listId },
+        where: {
+          listId: tenantList.id,
+          subscriber: { tenant_id },
+        },
         include: { subscriber: true },
       });
       subscribersToEmail = listSubscribers.map((ls) => ls.subscriber);

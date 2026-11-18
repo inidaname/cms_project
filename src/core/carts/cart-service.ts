@@ -304,27 +304,40 @@ export class CartService {
       where: { id: { in: productIds }, tenant_id },
     });
 
+    // Every product in the request must belong to the tenant: no partial
+    // insertion of foreign products.
     const validIds = new Set(tenantProducts.map((p) => p.id));
-    const hasValidTenantProduct = data.some((item) =>
-      validIds.has(item.product_id)
-    );
-
-    if (!hasValidTenantProduct) {
+    const invalidIds = productIds.filter((id) => !validIds.has(id));
+    if (invalidIds.length > 0) {
       throw new Error("Invalid product for tenant");
     }
 
-    // Resolve unit prices (product price, or the selected variation's price)
+    // Resolve unit prices (product price, or the selected variation's price).
+    // Variations are scoped through their tenant-owned parent product so a
+    // foreign variation_id can never supply a foreign unit price.
     const variationIds = data
       .map((item) => item.variation_id)
       .filter((id): id is string => Boolean(id));
     const variations = variationIds.length
       ? await this.prisma.productVariation.findMany({
-          where: { id: { in: variationIds } },
+          where: {
+            id: { in: variationIds },
+            product: { tenant_id },
+          },
         })
       : [];
     const variationPrice = new Map(
       variations.map((v) => [v.id, Number(v.price)])
     );
+
+    // A variation that exists on another tenant's product is rejected rather
+    // than silently falling back to the base product price.
+    const missingVariations = variationIds.filter(
+      (id) => !variationPrice.has(id)
+    );
+    if (missingVariations.length > 0) {
+      throw new Error("Invalid variation for tenant");
+    }
     const productPrice = new Map(
       tenantProducts.map((p) => [p.id, Number(p.price)])
     );

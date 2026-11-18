@@ -285,10 +285,16 @@ export class NotificationService {
       ? await this.parseTemplate(template.subject, variables)
       : null;
 
+    // Tenant scope: the recipient must belong to the same tenant.
+    const recipient = await this.prisma.user.findFirst({
+      where: { id: user_id, tenant_id },
+      select: { id: true, email: true },
+    });
+
     const results: any = {};
 
     if (sendTo?.email || (!sendTo && template.type === "EMAIL")) {
-      const email = sendTo?.email || (await this.prisma.user.findUnique({ where: { id: user_id } }))?.email;
+      const email = sendTo?.email || recipient?.email;
       if (email) {
         results.email = await this.sendEmail(email, parsedSubject!, parsedBody, tenant_id);
       }

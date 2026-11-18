@@ -144,8 +144,28 @@ export class AdminService {
         });
 
       case "add_subscribers":
+        // Tenant scope: the list and every subscriber must belong to the
+        // caller's tenant before any ListSubscriber row is written.
+        const tenantList = await this.prisma.list.findFirst({
+          where: { id: data.list_id, tenant_id },
+          select: { id: true },
+        });
+        if (!tenantList) throw new Error("List not found");
+
+        const tenantSubscribers = await this.prisma.subscriber.findMany({
+          where: { id: { in: data.subscriber_ids }, tenant_id },
+          select: { id: true },
+        });
+        const tenantSubscriberIds = new Set(tenantSubscribers.map((s) => s.id));
+        const foreignSubscribers = data.subscriber_ids.filter(
+          (id: string) => !tenantSubscriberIds.has(id),
+        );
+        if (foreignSubscribers.length > 0) {
+          throw new Error("Subscribers do not belong to this tenant");
+        }
+
         const existingSubs = await this.prisma.listSubscriber.findMany({
-          where: { listId: data.list_id },
+          where: { listId: tenantList.id, subscriberId: { in: data.subscriber_ids } },
           select: { subscriberId: true },
         });
         const existingIds = new Set(existingSubs.map((s) => s.subscriberId));
@@ -155,7 +175,7 @@ export class AdminService {
         if (newSubs.length > 0) {
           await this.prisma.listSubscriber.createMany({
             data: newSubs.map((subscriberId: string) => ({
-              listId: data.list_id,
+              listId: tenantList.id,
               subscriberId,
             })),
           });
@@ -163,9 +183,16 @@ export class AdminService {
         return { added: newSubs.length };
 
       case "remove_subscribers":
+        // Tenant scope: only memberships of a tenant-owned list are removed.
+        const removeList = await this.prisma.list.findFirst({
+          where: { id: data.list_id, tenant_id },
+          select: { id: true },
+        });
+        if (!removeList) throw new Error("List not found");
+
         await this.prisma.listSubscriber.deleteMany({
           where: {
-            listId: data.list_id,
+            listId: removeList.id,
             subscriberId: { in: data.subscriber_ids },
           },
         });
@@ -226,8 +253,20 @@ export class AdminService {
 
         let subscribers: any[];
         if (data.list_id) {
+          // Tenant scope: resolve only subscribers of a tenant-owned list
+          // (and defensively require the subscriber rows themselves to be
+          // tenant-owned).
+          const sendList = await this.prisma.list.findFirst({
+            where: { id: data.list_id, tenant_id },
+            select: { id: true },
+          });
+          if (!sendList) throw new Error("List not found");
+
           const listSubs = await this.prisma.listSubscriber.findMany({
-            where: { listId: data.list_id },
+            where: {
+              listId: sendList.id,
+              subscriber: { tenant_id },
+            },
             select: { subscriberId: true },
           });
           subscribers = listSubs.map((ls) => ls.subscriberId);
@@ -342,9 +381,16 @@ export class AdminService {
         });
 
       case "add_variation":
+        // Tenant scope: the parent product must belong to the caller's tenant.
+        const variationProduct = await this.prisma.product.findFirst({
+          where: { id: data.product_id, tenant_id },
+          select: { id: true },
+        });
+        if (!variationProduct) throw new Error("Product not found");
+
         return await this.prisma.productVariation.create({
           data: {
-            product_id: data.product_id,
+            product_id: variationProduct.id,
             type: data.type as any,
             value: data.value,
             price: data.price,
@@ -353,8 +399,12 @@ export class AdminService {
         });
 
       case "update_variation":
+        // Tenant scope: constrain through the parent product's tenant_id.
         return await this.prisma.productVariation.updateMany({
-          where: { id: data.variation_id },
+          where: {
+            id: data.variation_id,
+            product: { tenant_id },
+          },
           data: {
             type: data.type as any,
             value: data.value,
@@ -364,13 +414,36 @@ export class AdminService {
         });
 
       case "delete_variation":
+        // Tenant scope: constrain through the parent product's tenant_id.
         return await this.prisma.productVariation.deleteMany({
-          where: { id: data.variation_id },
+          where: {
+            id: data.variation_id,
+            product: { tenant_id },
+          },
         });
 
       case "add_to_bundle":
+        // Tenant scope: parent and every child product must belong to the
+        // caller's tenant.
+        const bundleParent = await this.prisma.product.findFirst({
+          where: { id: data.product_id, tenant_id },
+          select: { id: true },
+        });
+        if (!bundleParent) throw new Error("Product not found");
+
+        const bundleChildIds = [
+          ...new Set<string>(data.components.map((comp: any) => comp.child_id)),
+        ] as string[];
+        const bundleChildren = await this.prisma.product.findMany({
+          where: { id: { in: bundleChildIds }, tenant_id },
+          select: { id: true },
+        });
+        if (bundleChildren.length !== bundleChildIds.length) {
+          throw new Error("Bundle components must belong to this tenant");
+        }
+
         const bundleComponents = data.components.map((comp: any) => ({
-          parent_id: data.product_id,
+          parent_id: bundleParent.id,
           child_id: comp.child_id,
           additionalPrice: comp.additionalPrice || 0,
         }));
@@ -380,10 +453,35 @@ export class AdminService {
         });
 
       case "edit_bundle":
+        // Tenant scope: parent must belong to the caller's tenant and every
+        // component row must reference that parent.
+        const editParent = await this.prisma.product.findFirst({
+          where: { id: data.product_id, tenant_id },
+          select: { id: true },
+        });
+        if (!editParent) throw new Error("Product not found");
+
+        const editChildIds = [
+          ...new Set<string>(
+            data.components
+              .filter((comp: any) => comp.child_id)
+              .map((comp: any) => comp.child_id),
+          ),
+        ] as string[];
+        if (editChildIds.length > 0) {
+          const editChildren = await this.prisma.product.findMany({
+            where: { id: { in: editChildIds }, tenant_id },
+            select: { id: true },
+          });
+          if (editChildren.length !== editChildIds.length) {
+            throw new Error("Bundle components must belong to this tenant");
+          }
+        }
+
         for (const comp of data.components) {
           if (comp.id) {
-            await this.prisma.productComponent.update({
-              where: { id: comp.id },
+            await this.prisma.productComponent.updateMany({
+              where: { id: comp.id, parent_id: editParent.id },
               data: {
                 additionalPrice: comp.additionalPrice,
                 child_id: comp.child_id,
@@ -392,7 +490,7 @@ export class AdminService {
           }
         }
         return await this.prisma.productComponent.findMany({
-          where: { parent_id: data.product_id },
+          where: { parent_id: editParent.id },
         });
 
       default:
@@ -436,13 +534,15 @@ export class AdminService {
         });
 
       case "update_delivery":
+        // Tenant scope: deliveries and sales are tenant-owned; both the
+        // lookup and the write are constrained by tenant_id.
         const existingDelivery = await this.prisma.delivery.findUnique({
-          where: { sales_id: data.id },
+          where: { sales_id: data.id, tenant_id },
         });
 
         if (existingDelivery) {
           return await this.prisma.delivery.update({
-            where: { sales_id: data.id },
+            where: { sales_id: data.id, tenant_id },
             data: {
               status: data.status,
               address: data.address,
@@ -454,9 +554,15 @@ export class AdminService {
             },
           });
         } else {
+          const tenantSale = await this.prisma.sales.findFirst({
+            where: { id: data.id, tenant_id },
+            select: { id: true },
+          });
+          if (!tenantSale) throw new Error("Sale not found");
+
           return await this.prisma.delivery.create({
             data: {
-              sales_id: data.id,
+              sales_id: tenantSale.id,
               tenant_id,
               status: data.status || ("PENDING" as any),
               address: data.address || "",

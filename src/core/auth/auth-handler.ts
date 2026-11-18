@@ -169,6 +169,7 @@ export const authHandler: Authhandler = (app) => {
         hashedPassword,
         store_id: stored.id,
         user_id: stored.user_id,
+        tenant_id: stored.tenant_id,
       });
       await sendAuthEmailBestEffort(req, "password-reset-confirmation", stored.user_id, () =>
         sendPasswordResetConfirmationEmail({
