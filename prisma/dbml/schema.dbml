@@ -31,6 +31,12 @@ Table Tenant {
   settings TenantSettings
   notifications Notification [not null]
   notificationTemplates NotificationTemplate [not null]
+  offeringTypes OfferingType [not null]
+  optionGroups OptionGroup [not null]
+  optionChoices OptionChoice [not null]
+  offeringSlots OfferingSlot [not null]
+  organizations Organization [not null]
+  saleParticipants SaleParticipant [not null]
 }
 
 Table TenantFinecoreConfig {
@@ -191,6 +197,9 @@ Table Product {
   updatedAt DateTime [not null]
   productVariations ProductVariation [not null]
   cartItems CartItems [not null]
+  optionGroups OptionGroup [not null]
+  optionChoices OptionChoice [not null]
+  offeringSlots OfferingSlot [not null]
 
   indexes {
     (tenant_id, title) [unique]
@@ -246,6 +255,7 @@ Table CartItems {
   childItems CartItems [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  configuration Json
 }
 
 Table Cart {
@@ -308,6 +318,9 @@ Table Sales {
   updatedAt DateTime [not null]
   payments Payments
   delivery Delivery
+  organization_id String
+  organization Organization
+  participants SaleParticipant [not null]
 }
 
 Table Payments {
@@ -460,6 +473,96 @@ Table NotificationPreference {
   quietHoursEnd String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+}
+
+Table OfferingType {
+  id String [pk]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  key String [not null]
+  name String [not null]
+  selectable Boolean [not null, default: false]
+  scheduled Boolean [not null, default: false]
+  participants Boolean [not null, default: false]
+  deliverable Boolean [not null, default: false]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (tenant_id, key) [unique]
+  }
+}
+
+Table OptionGroup {
+  id String [pk]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  product_id String [not null]
+  product Product [not null]
+  name String [not null]
+  required Boolean [not null, default: false]
+  min_select Int [not null, default: 0]
+  max_select Int [not null, default: 1]
+  position Int [not null, default: 0]
+  choices OptionChoice [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table OptionChoice {
+  id String [pk]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  group_id String [not null]
+  group OptionGroup [not null]
+  label String [not null]
+  product_id String
+  product Product
+  price_delta Float [not null, default: 0]
+  active Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table OfferingSlot {
+  id String [pk]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  product_id String [not null]
+  product Product [not null]
+  startsAt DateTime [not null]
+  endsAt DateTime [not null]
+  capacity Int
+  bookedCount Int [not null, default: 0]
+  location String
+  notes String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Organization {
+  id String [pk]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  name String [not null]
+  contactEmail String
+  contactPhone String
+  address String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  sales Sales [not null]
+}
+
+Table SaleParticipant {
+  id String [pk]
+  tenant_id String [not null]
+  tenant Tenant [not null]
+  sale_id String [not null]
+  sale Sales [not null]
+  name String [not null]
+  email String
+  role String [not null]
+  createdAt DateTime [default: `now()`, not null]
 }
 
 Enum ProductStatus {
@@ -658,6 +761,8 @@ Ref: Sales.tenant_id > Tenant.id
 
 Ref: Sales.user_id > User.id
 
+Ref: Sales.organization_id > Organization.id
+
 Ref: Payments.user_id > User.id
 
 Ref: Payments.tenant_id > Tenant.id
@@ -683,3 +788,25 @@ Ref: Notification.user_id > User.id
 Ref: PushToken.user_id > User.id
 
 Ref: NotificationPreference.user_id - User.id
+
+Ref: OfferingType.tenant_id > Tenant.id
+
+Ref: OptionGroup.tenant_id > Tenant.id
+
+Ref: OptionGroup.product_id > Product.id
+
+Ref: OptionChoice.tenant_id > Tenant.id
+
+Ref: OptionChoice.group_id > OptionGroup.id [delete: Cascade]
+
+Ref: OptionChoice.product_id > Product.id
+
+Ref: OfferingSlot.tenant_id > Tenant.id
+
+Ref: OfferingSlot.product_id > Product.id
+
+Ref: Organization.tenant_id > Tenant.id
+
+Ref: SaleParticipant.tenant_id > Tenant.id
+
+Ref: SaleParticipant.sale_id > Sales.id

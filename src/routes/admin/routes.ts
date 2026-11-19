@@ -1,4 +1,6 @@
 import { adminHandler } from "../../core/admin/admin-handler";
+import { offeringHandler } from "../../core/offering/offering-handler";
+import { offeringSlotHandler } from "../../core/offering/offering-slot-handler";
 import {
   AdminAnalyticsSchemas,
   ProjectSchemas,
@@ -17,9 +19,37 @@ import {
   AuditLogSchemas,
   SettingsSchemas,
 } from "../../core/admin/admin.schema";
+import { OfferingSchemas } from "../../core/offering/offering.schema";
+import { OfferingSlotSchemas } from "../../core/offering/offering-slot.schema";
 
 const adminRoutes: PluginType = async (app) => {
   const handler = adminHandler(app);
+  const offering = offeringHandler(app);
+
+  // --- Offering-domain configuration (prompt 9) ---------------------------
+  // Mounted under /admin so these routes inherit the same OWNER/ADMIN
+  // bearer-token enforcement from the tenant middleware as every other
+  // admin route.
+  app.post("/offering-types", { schema: OfferingSchemas.createOfferingType }, offering.createOfferingType);
+  app.get("/offering-types", { schema: OfferingSchemas.listOfferingTypes }, offering.listOfferingTypes);
+  app.get("/offering-types/:id", { schema: OfferingSchemas.getOfferingType }, offering.getOfferingType);
+  app.put("/offering-types/:id", { schema: OfferingSchemas.updateOfferingType }, offering.updateOfferingType);
+  app.delete("/offering-types/:id", { schema: OfferingSchemas.deleteOfferingType }, offering.deleteOfferingType);
+
+  app.post("/products/:product_id/option-groups", { schema: OfferingSchemas.createOptionGroup }, offering.createOptionGroup);
+  app.get("/products/:product_id/option-groups", { schema: OfferingSchemas.listOptionGroups }, offering.listOptionGroups);
+  app.put("/option-groups/:id", { schema: OfferingSchemas.updateOptionGroup }, offering.updateOptionGroup);
+  app.delete("/option-groups/:id", { schema: OfferingSchemas.deleteOptionGroup }, offering.deleteOptionGroup);
+  app.post("/option-groups/:group_id/choices", { schema: OfferingSchemas.addOptionChoice }, offering.addOptionChoice);
+  app.put("/option-choices/:id", { schema: OfferingSchemas.updateOptionChoice }, offering.updateOptionChoice);
+  app.delete("/option-choices/:id", { schema: OfferingSchemas.deleteOptionChoice }, offering.deleteOptionChoice);
+
+  // Slots: scheduling + capacity primitive for scheduled offering types.
+  const slot = offeringSlotHandler(app);
+  app.post("/products/:product_id/slots", { schema: OfferingSlotSchemas.createSlot }, slot.createSlot);
+  app.get("/products/:product_id/slots", { schema: OfferingSlotSchemas.listSlots }, slot.listSlots);
+  app.put("/slots/:id", { schema: OfferingSlotSchemas.updateSlot }, slot.updateSlot);
+  app.delete("/slots/:id", { schema: OfferingSlotSchemas.deleteSlot }, slot.deleteSlot);
 
   app.get("/dashboard", { schema: AdminAnalyticsSchemas.getDashboard }, handler.getDashboard);
   app.get("/analytics/revenue", { schema: AdminAnalyticsSchemas.getRevenueAnalytics }, handler.getRevenueAnalytics);
