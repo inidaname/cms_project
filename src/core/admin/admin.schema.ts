@@ -608,7 +608,13 @@ export const ListSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "array", items: { $ref: "list#" } },
+          data: {
+            type: "object",
+            properties: {
+              data: { type: "array", items: { $ref: "list#" } },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
         },
       },
     },
@@ -655,7 +661,12 @@ export const ListSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              added: { type: "integer", description: "Number of memberships created" },
+            },
+          },
         },
       },
     },
@@ -679,7 +690,12 @@ export const ListSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              removed: { type: "integer", description: "Number of memberships removed" },
+            },
+          },
         },
       },
     },
@@ -802,7 +818,12 @@ export const CampaignSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              scheduled: { type: "integer", description: "Number of subscribers queued" },
+            },
+          },
         },
       },
     },

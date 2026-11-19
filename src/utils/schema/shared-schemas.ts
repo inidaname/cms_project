@@ -195,6 +195,13 @@ export const SharedSchemas = {
         email: { type: "string", format: "email" },
         name: { type: "string", nullable: true },
         status: { type: "string", enum: ["ACTIVE", "UNSUBSCRIBED", "BOUNCED"] },
+        _count: {
+          type: "object",
+          properties: {
+            lists: { type: "integer" },
+            sends: { type: "integer" },
+          },
+        },
         createdAt: { type: "string", format: "date-time" },
       },
     },
@@ -207,6 +214,10 @@ export const SharedSchemas = {
         tenant_id: { type: "string", format: "uuid" },
         name: { type: "string" },
         subscriberCount: { type: "integer" },
+        _count: {
+          type: "object",
+          properties: { subscribers: { type: "integer" } },
+        },
         createdAt: { type: "string", format: "date-time" },
       },
     },
@@ -222,6 +233,10 @@ export const SharedSchemas = {
         textBody: { type: "string", nullable: true },
         status: { type: "string", enum: ["DRAFT", "SCHEDULED", "SENDING", "SENT", "FAILED"] },
         scheduledAt: { type: "string", format: "date-time", nullable: true },
+        _count: {
+          type: "object",
+          properties: { sends: { type: "integer" } },
+        },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },

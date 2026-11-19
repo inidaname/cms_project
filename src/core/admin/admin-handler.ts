@@ -754,7 +754,10 @@ export const adminHandler = (app: FastifyInstance) => {
     listSubscribers: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
-        const result = await adminService.manageSubscribers(request.tenant.id, "list");
+        const result = await adminService.manageSubscribers(request.tenant.id, "list", {
+          page: Number(request.query?.page) || 1,
+          limit: Number(request.query?.limit) || 10,
+        });
         return reply.status(200).send({ status: "success", data: result });
       } catch (error: any) {
         return reply.status(400).send({ status: "error", message: error.message });
@@ -805,7 +808,10 @@ export const adminHandler = (app: FastifyInstance) => {
     listLists: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
-        const result = await adminService.manageLists(request.tenant.id, "list");
+        const result = await adminService.manageLists(request.tenant.id, "list", {
+          page: Number(request.query?.page) || 1,
+          limit: Number(request.query?.limit) || 10,
+        });
         return reply.status(200).send({ status: "success", data: result });
       } catch (error: any) {
         return reply.status(400).send({ status: "error", message: error.message });
@@ -856,7 +862,10 @@ export const adminHandler = (app: FastifyInstance) => {
     listCampaigns: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
-        const result = await adminService.manageCampaigns(request.tenant.id, "list");
+        const result = await adminService.manageCampaigns(request.tenant.id, "list", {
+          page: Number(request.query?.page) || 1,
+          limit: Number(request.query?.limit) || 10,
+        });
         return reply.status(200).send({ status: "success", data: result });
       } catch (error: any) {
         return reply.status(400).send({ status: "error", message: error.message });
@@ -1023,7 +1032,10 @@ export const adminHandler = (app: FastifyInstance) => {
     listOrders: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
-        const result = await adminService.manageOrders(request.tenant.id, "list");
+        const result = await adminService.manageOrders(request.tenant.id, "list", {
+          page: Number(request.query?.page) || 1,
+          limit: Number(request.query?.limit) || 10,
+        });
         return reply.status(200).send({ status: "success", data: result });
       } catch (error: any) {
         return reply.status(400).send({ status: "error", message: error.message });
@@ -1054,7 +1066,10 @@ export const adminHandler = (app: FastifyInstance) => {
     listPayments: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {
-        const result = await adminService.managePayments(request.tenant.id, "list");
+        const result = await adminService.managePayments(request.tenant.id, "list", {
+          page: Number(request.query?.page) || 1,
+          limit: Number(request.query?.limit) || 10,
+        });
         return reply.status(200).send({ status: "success", data: result });
       } catch (error: any) {
         return reply.status(400).send({ status: "error", message: error.message });

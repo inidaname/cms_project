@@ -63,12 +63,24 @@ export class AdminService {
   async manageSubscribers(tenant_id: string, action: string, data?: any) {
     switch (action) {
       case "list":
-        const subscribers = await this.prisma.subscriber.findMany({
-          where: { tenant_id },
-          include: { _count: { select: { lists: true, sends: true } } },
-          orderBy: { createdAt: "desc" },
-        });
-        return { data: subscribers, count: subscribers.length };
+        {
+          const page = data?.page ?? 1;
+          const limit = data?.limit ?? 10;
+          const [subscribers, total] = await Promise.all([
+            this.prisma.subscriber.findMany({
+              where: { tenant_id },
+              include: { _count: { select: { lists: true, sends: true } } },
+              orderBy: { createdAt: "desc" },
+              skip: (page - 1) * limit,
+              take: limit,
+            }),
+            this.prisma.subscriber.count({ where: { tenant_id } }),
+          ]);
+          return {
+            data: subscribers,
+            metadata: createPagination(total, page, limit),
+          };
+        }
 
       case "get":
         return await this.prisma.subscriber.findFirst({
@@ -111,11 +123,24 @@ export class AdminService {
   async manageLists(tenant_id: string, action: string, data?: any) {
     switch (action) {
       case "list":
-        return await this.prisma.list.findMany({
-          where: { tenant_id },
-          include: { _count: { select: { subscribers: true } } },
-          orderBy: { createdAt: "desc" },
-        });
+        {
+          const page = data?.page ?? 1;
+          const limit = data?.limit ?? 10;
+          const [lists, total] = await Promise.all([
+            this.prisma.list.findMany({
+              where: { tenant_id },
+              include: { _count: { select: { subscribers: true } } },
+              orderBy: { createdAt: "desc" },
+              skip: (page - 1) * limit,
+              take: limit,
+            }),
+            this.prisma.list.count({ where: { tenant_id } }),
+          ]);
+          return {
+            data: lists,
+            metadata: createPagination(total, page, limit),
+          };
+        }
 
       case "get":
         return await this.prisma.list.findFirst({
@@ -206,11 +231,24 @@ export class AdminService {
   async manageCampaigns(tenant_id: string, action: string, data?: any) {
     switch (action) {
       case "list":
-        return await this.prisma.campaign.findMany({
-          where: { tenant_id },
-          include: { _count: { select: { sends: true } } },
-          orderBy: { createdAt: "desc" },
-        });
+        {
+          const page = data?.page ?? 1;
+          const limit = data?.limit ?? 10;
+          const [campaigns, total] = await Promise.all([
+            this.prisma.campaign.findMany({
+              where: { tenant_id },
+              include: { _count: { select: { sends: true } } },
+              orderBy: { createdAt: "desc" },
+              skip: (page - 1) * limit,
+              take: limit,
+            }),
+            this.prisma.campaign.count({ where: { tenant_id } }),
+          ]);
+          return {
+            data: campaigns,
+            metadata: createPagination(total, page, limit),
+          };
+        }
 
       case "get":
         return await this.prisma.campaign.findFirst({
@@ -501,16 +539,29 @@ export class AdminService {
   async manageOrders(tenant_id: string, action: string, data?: any) {
     switch (action) {
       case "list":
-        return await this.prisma.sales.findMany({
-          where: { tenant_id },
-          include: {
-            paidBy: { select: { id: true, name: true, email: true } },
-            payments: true,
-            delivery: true,
-            cart: { include: { cartItems: { include: { item: true } } } },
-          },
-          orderBy: { createdAt: "desc" },
-        });
+        {
+          const page = data?.page ?? 1;
+          const limit = data?.limit ?? 10;
+          const [orders, total] = await Promise.all([
+            this.prisma.sales.findMany({
+              where: { tenant_id },
+              include: {
+                paidBy: { select: { id: true, name: true, email: true } },
+                payments: true,
+                delivery: true,
+                cart: { include: { cartItems: { include: { item: true } } } },
+              },
+              orderBy: { createdAt: "desc" },
+              skip: (page - 1) * limit,
+              take: limit,
+            }),
+            this.prisma.sales.count({ where: { tenant_id } }),
+          ]);
+          return {
+            data: orders,
+            metadata: createPagination(total, page, limit),
+          };
+        }
 
       case "get":
         return await this.prisma.sales.findFirst({
@@ -583,13 +634,26 @@ export class AdminService {
   async managePayments(tenant_id: string, action: string, data?: any) {
     switch (action) {
       case "list":
-        return await this.prisma.payments.findMany({
-          where: { tenant_id },
-          include: {
-            paidBy: { select: { id: true, name: true, email: true } },
-          },
-          orderBy: { createdAt: "desc" },
-        });
+        {
+          const page = data?.page ?? 1;
+          const limit = data?.limit ?? 10;
+          const [payments, total] = await Promise.all([
+            this.prisma.payments.findMany({
+              where: { tenant_id },
+              include: {
+                paidBy: { select: { id: true, name: true, email: true } },
+              },
+              orderBy: { createdAt: "desc" },
+              skip: (page - 1) * limit,
+              take: limit,
+            }),
+            this.prisma.payments.count({ where: { tenant_id } }),
+          ]);
+          return {
+            data: payments,
+            metadata: createPagination(total, page, limit),
+          };
+        }
 
       case "get":
         return await this.prisma.payments.findFirst({

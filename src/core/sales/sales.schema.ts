@@ -45,5 +45,18 @@ export const SalesSchemas = {
         checkout_id: { type: "string", format: "uuid" },
       },
     },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          code: { type: "string" },
+          message: { type: "string" },
+          data: {
+            oneOf: [{ $ref: "sales#" }, { type: "null" }],
+          },
+        },
+      },
+    },
   },
 };

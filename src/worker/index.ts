@@ -49,7 +49,9 @@ app.use("*", async (c, next) => {
   }
 });
 
-app.get("/health", (c) => c.json({ ok: true, ts: Date.now() }));
+app.get("/health", (c) =>
+  c.json({ status: "ok", timestamp: new Date().toISOString() }),
+);
 
 app.get("/health/db", async (c) => {
   const prisma = getApp(c).prisma;
@@ -63,6 +65,11 @@ app.use("*", checkTenant);
 // /admin tier) can read the authenticated user. checkTenant passes public
 // routes through to this middleware, so coverage is unchanged.
 app.use("*", rateLimit());
+
+// Tenant-scoped routes below mirror the Node route map (parity: /, /ping).
+app.get("/", (c) => c.json({ root: true }));
+
+app.get("/ping", (c) => c.json({ pong: true }));
 
 app.post(
   "/upload",

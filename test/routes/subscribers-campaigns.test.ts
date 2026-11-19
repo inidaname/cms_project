@@ -51,10 +51,9 @@ test("subscribers and campaigns", async (t: TestContext) => {
       payload: { list_id: listId, subscriber_ids: [subscriber.id] },
     });
     assert.equal(res.statusCode, 200);
+    // The declared response contract now passes the result through.
+    assert.equal(res.json().data.added, 1);
 
-    // NOTE: the route's response schema currently serializes the payload to
-    // an empty object (Phase 6 contract finding), so the membership is
-    // asserted in the database.
     const memberships = await fx.prisma.listSubscriber.count({
       where: { listId },
     });
@@ -109,10 +108,8 @@ test("subscribers and campaigns", async (t: TestContext) => {
       payload: { campaign_id: campaignId, list_id: listId },
     });
     assert.equal(res.statusCode, 200);
+    assert.equal(res.json().data.scheduled, 1);
 
-    // NOTE: the route's response schema currently serializes the payload to
-    // an empty object (Phase 6 contract finding), so the scheduled sends are
-    // asserted in the database.
     const sends = await fx.prisma.emailSend.findMany({
       where: { campaignId },
     });
@@ -124,10 +121,7 @@ test("subscribers and campaigns", async (t: TestContext) => {
     assert.ok(!foreignTarget);
   });
 
-  await t.test("campaign storage is tenant-scoped even though list responses are stripped", async () => {
-    // NOTE: GET /admin/campaigns currently serializes to an empty object
-    // (Phase 6 contract finding), so cross-tenant visibility is asserted in
-    // the database while the routes are exercised for auth behavior.
+  await t.test("campaign listing is paginated and tenant-scoped", async () => {
     await app.inject({
       method: "POST",
       url: "/admin/campaigns",
@@ -144,6 +138,12 @@ test("subscribers and campaigns", async (t: TestContext) => {
       headers: fx.authA,
     });
     assert.equal(resA.statusCode, 200);
+    const payloadA = resA.json().data;
+    assert.ok(Array.isArray(payloadA.data), "list response must be paginated");
+    assert.ok(payloadA.metadata, "list response must include pagination metadata");
+    assert.ok(payloadA.metadata.total >= 1);
+    assert.ok(payloadA.data.every((c: any) => c.tenant_id === fx.tenantA.id));
+    assert.ok(!payloadA.data.some((c: any) => c.subject.startsWith("Foreign campaign")));
 
     const resB = await app.inject({
       method: "GET",
@@ -151,18 +151,8 @@ test("subscribers and campaigns", async (t: TestContext) => {
       headers: fx.authB,
     });
     assert.equal(resB.statusCode, 200);
-
-    const ownCampaigns = await fx.prisma.campaign.findMany({
-      where: { tenant_id: fx.tenantA.id },
-    });
-    assert.ok(ownCampaigns.some((c) => c.subject.startsWith("Iso campaign")));
-
-    const foreign = await fx.prisma.campaign.count({
-      where: {
-        tenant_id: fx.tenantA.id,
-        subject: { startsWith: "Foreign campaign" },
-      },
-    });
-    assert.equal(foreign, 0, "tenant A must not see tenant B campaigns");
+    const payloadB = resB.json().data;
+    assert.ok(payloadB.data.some((c: any) => c.subject.startsWith("Foreign campaign")));
+    assert.ok(!payloadB.data.some((c: any) => c.subject.startsWith("Iso campaign")));
   });
 });
