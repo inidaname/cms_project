@@ -118,7 +118,7 @@ const isolationTests = async (t: TestContext) => {
   await t.test("cart item creation rejects a foreign tenant product", async () => {
     const res = await app.inject({
       method: "POST",
-      url: "/carts/items/",
+      url: "/carts/items",
       headers: fx.authAUser,
       payload: { product_id: fx.productB.id, product_quantity: 1 },
     });

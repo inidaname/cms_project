@@ -64,12 +64,33 @@ export async function createTenantFixture(
     },
   });
 
+  const adminA = await prisma.user.create({
+    data: {
+      tenant_id: tenantA.id,
+      email: `${PREFIX}admin-a-${suffix}@iso.test`,
+      name: "Isolation Admin A",
+      password: "not-used-in-isolation-tests",
+      role: "ADMIN",
+      agreed: true,
+    },
+  });
+
+  const suspendedTenant = await prisma.tenant.create({
+    data: {
+      name: `${PREFIX}tenant-suspended-${suffix}`,
+      domain: `${PREFIX}suspended-${suffix}.test`,
+      apiKey: `${PREFIX}suspended-key-${suffix}`,
+      status: "SUSPENDED",
+    },
+  });
+
   const productA = await prisma.product.create({
     data: {
       tenant_id: tenantA.id,
       title: `${PREFIX}product-a-${suffix}`,
       description: "isolation fixture product A",
       price: 10,
+      quantity: 100,
     },
   });
   const variationA = await prisma.productVariation.create({
@@ -87,6 +108,7 @@ export async function createTenantFixture(
       title: `${PREFIX}product-b-${suffix}`,
       description: "isolation fixture product B",
       price: 20,
+      quantity: 100,
     },
   });
   const variationB = await prisma.productVariation.create({
@@ -115,12 +137,13 @@ export async function createTenantFixture(
 
   const tokens = {
     ownerA: tokenFor(ownerA),
+    adminA: tokenFor(adminA),
     userA: tokenFor(userA),
     ownerB: tokenFor(ownerB),
   };
 
   t.after(async () => {
-    const tenantIds = [tenantA.id, tenantB.id];
+    const tenantIds = [tenantA.id, tenantB.id, suspendedTenant.id];
     const productIds = [productA.id, productB.id];
 
     // The Prisma engine occasionally returns transient errors ("engine not
@@ -226,7 +249,9 @@ export async function createTenantFixture(
     prisma,
     tenantA,
     tenantB,
+    suspendedTenant,
     ownerA,
+    adminA,
     userA,
     ownerB,
     productA,
@@ -238,10 +263,13 @@ export async function createTenantFixture(
     tokens,
     // Convenience header builders for requests through app.inject.
     authA: { "x-api-key": tenantA.apiKey, authorization: `Bearer ${tokens.ownerA}` },
+    authAAdmin: { "x-api-key": tenantA.apiKey, authorization: `Bearer ${tokens.adminA}` },
     authAUser: { "x-api-key": tenantA.apiKey, authorization: `Bearer ${tokens.userA}` },
     authB: { "x-api-key": tenantB.apiKey, authorization: `Bearer ${tokens.ownerB}` },
     // Cross pair: tenant-A token with tenant-B API key (and vice versa).
     crossAB: { "x-api-key": tenantB.apiKey, authorization: `Bearer ${tokens.ownerA}` },
     crossBA: { "x-api-key": tenantA.apiKey, authorization: `Bearer ${tokens.ownerB}` },
+    authSuspended: { "x-api-key": suspendedTenant.apiKey },
+    noAuth: {} as Record<string, string>,
   };
 };

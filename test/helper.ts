@@ -1,4 +1,7 @@
 // This file contains code that we reuse between our tests.
+// The explicit reference pulls in the global app type declarations
+// (PluginType, PrismaClientType, ...) so ts-node can compile route files.
+/// <reference path="../src/types/app.d.ts" />
 import * as path from 'node:path'
 import * as test from 'node:test'
 const helper = require('fastify-cli/helper.js')

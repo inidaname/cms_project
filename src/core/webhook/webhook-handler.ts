@@ -88,10 +88,16 @@ export const webhookHandler = (deps: WebhookHandlerDeps) => {
         });
       }
 
-      const timeDiff = Math.abs(
-        Date.now() - new Date(timestamp).getTime()
-      );
-      if (timeDiff > 5 * 60 * 1000) {
+      const timeDiffMs = (() => {
+        // Accept ISO strings and epoch-millisecond strings; anything else is
+        // malformed and must not pass as "not stale".
+        const asNumber = Number(timestamp);
+        if (Number.isFinite(asNumber)) return Math.abs(Date.now() - asNumber);
+        const parsed = Date.parse(timestamp);
+        return Number.isFinite(parsed) ? Math.abs(Date.now() - parsed) : Number.NaN;
+      })();
+
+      if (!Number.isFinite(timeDiffMs) || timeDiffMs > 5 * 60 * 1000) {
         return reply.status(StatusCode.ClientErrorBadRequest).send({
           status: "error",
           message: "Webhook timestamp expired",

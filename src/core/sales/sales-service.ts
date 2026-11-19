@@ -21,7 +21,6 @@ export class SalesService {
         id: data.cart_id,
         tenant: { id: data.tenant_id },
         user_id: data.user_id,
-        status: "Active",
       },
       include: { sales: true, cartItems: true },
     });
@@ -29,7 +28,7 @@ export class SalesService {
     if (!cart) {
       throw {
         statusCode: 404,
-        message: "Cart not found or not active",
+        message: "Cart not found",
         status: "error",
       };
     }
@@ -38,6 +37,14 @@ export class SalesService {
       throw {
         statusCode: 409,
         message: "This cart has already been checked out",
+        status: "error",
+      };
+    }
+
+    if (cart.status !== "Active") {
+      throw {
+        statusCode: 400,
+        message: "Cannot checkout an inactive cart",
         status: "error",
       };
     }
@@ -57,6 +64,13 @@ export class SalesService {
         user_id: data.user_id,
         amount: cart.totalValue,
       },
+    });
+
+    // Transition the cart: an already-checked-out cart must not accept new
+    // items or be handed out again by createCart's active-cart dedupe.
+    await this.prisma.cart.update({
+      where: { id: cart.id },
+      data: { status: "Checkedout" },
     });
 
     return sales;
