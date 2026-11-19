@@ -142,6 +142,7 @@ export const SharedSchemas = {
         user_id: { type: "string", format: "uuid" },
         amount: { type: "number" },
         status: { type: "string", enum: ["Delivered", "Paid", "Returned", "Cancelled"] },
+        organization_id: { type: "string", format: "uuid", nullable: true },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },

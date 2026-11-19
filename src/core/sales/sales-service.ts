@@ -15,6 +15,14 @@ export class SalesService {
     cart_id: string;
     tenant_id: string;
     user_id: string;
+    organization?: {
+      id?: string;
+      name?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      address?: string;
+    };
+    participants?: { name: string; email?: string; role?: string }[];
   }) {
     const cart = await this.prisma.cart.findFirst({
       where: {
@@ -81,6 +89,104 @@ export class SalesService {
       throw error;
     }
 
+    // Authoritative slot capacity (compensating pattern — Neon transactions
+    // are unreliable): increment bookedCount per referenced slot, verify the
+    // guard, and fully compensate (decrement + delete this sale) on failure.
+    // Everything below runs only after the sale row exists, so a slot
+    // failure leaves no sale, no cart transition, and no participant rows.
+    const slotIncrements = new Map<string, number>();
+    for (const item of cart.cartItems) {
+      const configuration: any = item.configuration;
+      const slotId = configuration?.slot_id;
+      if (slotId) {
+        const qty = Math.max(1, Number(item.product_quantity) || 1);
+        slotIncrements.set(slotId, (slotIncrements.get(slotId) ?? 0) + qty);
+      }
+    }
+
+    for (const [slotId, qty] of slotIncrements) {
+      await this.prisma.offeringSlot.updateMany({
+        where: { id: slotId, tenant_id: data.tenant_id },
+        data: { bookedCount: { increment: qty } },
+      });
+      const slot = await this.prisma.offeringSlot.findUnique({ where: { id: slotId } });
+      const started = !slot || slot.startsAt.getTime() <= Date.now();
+      const overbooked = !!slot && slot.capacity != null && slot.bookedCount > slot.capacity;
+
+      if (!slot || started || overbooked) {
+        await this.prisma.offeringSlot.updateMany({
+          where: { id: slotId, tenant_id: data.tenant_id },
+          data: { bookedCount: { decrement: qty } },
+        });
+        await this.prisma.sales.deleteMany({ where: { id: sales.id } });
+        throw {
+          statusCode: 409,
+          message: started
+            ? "Selected time slot has already started"
+            : "Selected time slot is fully booked",
+          status: "error",
+        };
+      }
+    }
+
+    // Organization: link by tenant-scoped id, or create-or-link by name.
+    let organization_id: string | null = null;
+    if (data.organization?.id) {
+      const existing = await this.prisma.organization.findFirst({
+        where: { id: data.organization.id, tenant_id: data.tenant_id },
+        select: { id: true },
+      });
+      if (!existing) {
+        await this.prisma.sales.deleteMany({ where: { id: sales.id } });
+        throw {
+          statusCode: 400,
+          message: "Organization not found",
+          status: "error",
+        };
+      }
+      organization_id = existing.id;
+    } else if (data.organization?.name) {
+      const existing = await this.prisma.organization.findFirst({
+        where: { tenant_id: data.tenant_id, name: data.organization.name },
+        select: { id: true },
+      });
+      organization_id =
+        existing?.id ??
+        (
+          await this.prisma.organization.create({
+            data: {
+              tenant_id: data.tenant_id,
+              name: data.organization.name,
+              contactEmail: data.organization.contactEmail ?? null,
+              contactPhone: data.organization.contactPhone ?? null,
+              address: data.organization.address ?? null,
+            },
+          })
+        ).id;
+    }
+
+    if (organization_id) {
+      await this.prisma.sales.update({
+        where: { id: sales.id },
+        data: { organization_id },
+      });
+    }
+
+    // Participants (learner/staff/attendee lists — generic, tenant-defined
+    // role labels).
+    const participants = (data.participants ?? []).filter((p) => p?.name);
+    if (participants.length > 0) {
+      await this.prisma.saleParticipant.createMany({
+        data: participants.map((p) => ({
+          tenant_id: data.tenant_id,
+          sale_id: sales.id,
+          name: p.name,
+          email: p.email ?? null,
+          role: p.role ?? "participant",
+        })),
+      });
+    }
+
     // Transition the cart: an already-checked-out cart must not accept new
     // items or be handed out again by createCart's active-cart dedupe.
     await this.prisma.cart.update({
@@ -88,7 +194,10 @@ export class SalesService {
       data: { status: "Checkedout" },
     });
 
-    return sales;
+    // Re-fetch: organization/participant mutations happen after creation.
+    return await this.prisma.sales.findUnique({
+      where: { id: sales.id },
+    });
   }
 
   async getCheckoutById(

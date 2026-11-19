@@ -18,6 +18,32 @@ export const SalesSchemas = {
           type: "string",
           enum: ["Card", "Transfer", "Cash", "Other"],
         },
+        organization: {
+          type: "object",
+          description:
+            "Organization billing: link by id, or create-or-link by name (tenant-scoped).",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string", minLength: 1, maxLength: 128 },
+            contactEmail: { type: "string" },
+            contactPhone: { type: "string" },
+            address: { type: "string" },
+          },
+        },
+        participants: {
+          type: "array",
+          description: "Participant/staff/learner list stored on the sale.",
+          maxItems: 100,
+          items: {
+            type: "object",
+            required: ["name"],
+            properties: {
+              name: { type: "string", minLength: 1, maxLength: 128 },
+              email: { type: "string" },
+              role: { type: "string", maxLength: 64 },
+            },
+          },
+        },
       },
     },
     response: {
