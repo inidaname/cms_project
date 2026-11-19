@@ -7,10 +7,20 @@ import apiReference from "@scalar/fastify-api-reference";
 import { swaggerOption } from "./utils/swagger";
 import loadSchemas from "./helpers/load-schema";
 import rawBodyPlugin from "./plugins/raw-body";
+import fastifyMultipart from "@fastify/multipart";
 const schemaDir = join(__dirname, "./utils/schema");
 
 const app: PluginType = async (fastify, opts) => {
   void fastify.register(rawBodyPlugin);
+
+  // Multipart parsing for /upload: per-file size limit enforced at the
+  // streamed-data boundary (see src/routes/upload/routes.ts).
+  void fastify.register(fastifyMultipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+      files: 2,
+    },
+  });
 
   void fastify.register(AutoLoad, {
     dir: join(__dirname, "plugins"),

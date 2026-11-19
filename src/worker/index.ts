@@ -5,6 +5,14 @@ import { authenticate, checkTenant } from "./middleware/check-tenant";
 import { rateLimit } from "./middleware/rate-limit";
 import { buildRouteEntries } from "./routes";
 import { mountShimRoutes } from "./lib/dispatch";
+import {
+  UPLOAD_MAX_BYTES,
+  UPLOAD_MESSAGES,
+  buildUploadKey,
+  buildUploadUrl,
+  isMultipartRequest,
+  validateUploadContentType,
+} from "../helpers/upload";
 import type { Env, WorkerEnv } from "./types";
 
 const app = new Hono<WorkerEnv>();
@@ -63,27 +71,24 @@ app.post(
     const bucket = c.env.R2_BUCKET_NAME;
     if (!bucket) {
       return c.json(
-        { status: "error", message: "R2 storage is not configured" },
+        { status: "error", message: UPLOAD_MESSAGES.notConfigured },
         503,
       );
     }
 
     if (
-      !c.req
-        .header("content-type")
-        ?.toLowerCase()
-        .startsWith("multipart/form-data")
+      !isMultipartRequest(c.req.header("content-type"))
     ) {
       return c.json(
-        { status: "error", message: "A multipart file is required" },
+        { status: "error", message: UPLOAD_MESSAGES.notMultipart },
         400,
       );
     }
 
     const declared = Number(c.req.header("content-length") ?? 0);
-    if (declared > 10 * 1024 * 1024 + 1024) {
+    if (declared > UPLOAD_MAX_BYTES + 1024) {
       return c.json(
-        { status: "error", message: "File exceeds the 10 MiB limit" },
+        { status: "error", message: UPLOAD_MESSAGES.tooLarge },
         413,
       );
     }
@@ -111,28 +116,39 @@ app.post(
       return c.json(
         {
           status: "error",
-          message: "A single file in the 'file' field is required",
+          message: UPLOAD_MESSAGES.singleFileRequired,
         },
         400,
       );
     }
 
     const file = fileFields[0];
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > UPLOAD_MAX_BYTES) {
       return c.json(
-        { status: "error", message: "File exceeds the 10 MiB limit" },
+        { status: "error", message: UPLOAD_MESSAGES.tooLarge },
         413,
       );
     }
 
-    const key = `uploads/${crypto.randomUUID()}`;
+    if (file.size === 0) {
+      return c.json(
+        { status: "error", message: UPLOAD_MESSAGES.emptyFile },
+        400,
+      );
+    }
+
+    const typeRejection = validateUploadContentType(file.type);
+    if (typeRejection) {
+      return c.json({ status: "error", message: typeRejection }, 415);
+    }
+
+    const key = buildUploadKey();
     const contentType = file.type || "application/octet-stream";
     await bucket.put(key, file.stream(), {
       httpMetadata: { contentType },
     });
 
-    const publicBaseUrl = c.env.R2_PUBLIC_BASE_URL?.replace(/\/+$/, "");
-    const url = publicBaseUrl ? `${publicBaseUrl}/${key}` : null;
+    const url = buildUploadUrl(c.env.R2_PUBLIC_BASE_URL, key);
 
     return c.json(
       {

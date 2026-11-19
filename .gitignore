@@ -70,3 +70,5 @@ dist
 
 .dev.vars
 .wrangler/
+
+.agents
