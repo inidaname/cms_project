@@ -66,17 +66,35 @@ export const CartSchemas = {
         variation_id: { type: "string", format: "uuid" },
         product_quantity: { type: "number", minimum: 1 },
         selections: {
-          type: "array",
-          description: "Items inside the bundle",
-          items: {
-            type: "object",
-            required: ["product_id"],
-            properties: {
-              product_id: { type: "string", format: "uuid" },
-              variation_id: { type: "string", format: "uuid" },
-              quantity: { type: "number" },
+          type: "object",
+          description:
+            "Optional structured selection for configurable/scheduled offerings: option groups with choices, a time slot, and participant count.",
+          properties: {
+            groups: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["group_id"],
+                properties: {
+                  group_id: { type: "string", format: "uuid" },
+                  choices: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      required: ["choice_id"],
+                      properties: {
+                        choice_id: { type: "string", format: "uuid" },
+                        quantity: { type: "number", minimum: 1 },
+                      },
+                    },
+                  },
+                },
+              },
             },
+            slot_id: { type: "string", format: "uuid" },
+            participants: { type: "number", minimum: 1 },
           },
+          additionalProperties: false,
         },
       },
     },

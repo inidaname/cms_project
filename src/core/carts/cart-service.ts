@@ -1,6 +1,11 @@
 import { $Enums, Prisma } from "@prisma/client";
 import { createPagination } from "../../utils/pagination";
 import { ProductService } from "../product/product-service";
+import {
+  validateAndPriceSelection,
+  type CartSelection,
+  type SelectionValidationResult,
+} from "./cart-selection";
 
 export class CartService {
   prisma;
@@ -342,20 +347,46 @@ export class CartService {
       tenantProducts.map((p) => [p.id, Number(p.price)])
     );
 
+    // Structured selections (prompt 9): validate against live configuration
+    // and price deterministically. Items without selections behave exactly
+    // as before.
+    const selectionResults = new Map<number, SelectionValidationResult>();
+    for (let i = 0; i < data.length; i++) {
+      const item: any = data[i];
+      if (item?.selections && typeof item.selections === "object") {
+        const basePrice =
+          (item.variation_id && variationPrice.get(item.variation_id)) ??
+          productPrice.get(item.product_id) ??
+          0;
+        const result = await validateAndPriceSelection(
+          this.prisma,
+          tenant_id,
+          item.product_id,
+          Number(basePrice),
+          item.selections as CartSelection,
+          Number(item.product_quantity) || 1,
+        );
+        selectionResults.set(i, result);
+      }
+    }
+
     // Only cart-item columns; strip client-only payloads like `selections`.
-    const normalizedItems = data.map((item) => {
+    const normalizedItems = data.map((item: any, index: number) => {
       const quantity = Number(item.product_quantity) || 0;
-      const unitPrice: number = Number(
+      const basePrice: number = Number(
         (item.variation_id && variationPrice.get(item.variation_id)) ??
           productPrice.get(item.product_id) ??
           0
       );
+      const selection = selectionResults.get(index);
+      const unitPrice = Number(basePrice + (selection?.unitPriceDelta ?? 0));
       return {
         product_id: item.product_id,
         variation_id: item.variation_id ?? null,
         product_quantity: quantity,
         unit_price: unitPrice,
         value: quantity * unitPrice,
+        configuration: selection?.configuration ?? undefined,
       };
     });
 
@@ -424,6 +455,7 @@ export class CartService {
             product_quantity: mergedQty,
             unit_price: Number(item.unit_price),
             value: mergedQty * Number(item.unit_price),
+            ...(item.configuration !== undefined && { configuration: item.configuration }),
           },
         });
       } else {
@@ -435,6 +467,7 @@ export class CartService {
             product_quantity: Number(item.product_quantity),
             unit_price: Number(item.unit_price ?? 0),
             value: Number(item.value ?? 0),
+            ...(item.configuration !== undefined && { configuration: item.configuration }),
           },
         });
       }
