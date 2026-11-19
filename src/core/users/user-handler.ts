@@ -6,6 +6,7 @@ import {
   CASSuccessCode,
   CASSuccessMessage,
 } from "../../utils/enums";
+import { sanitizeUser } from "../../utils/sanitize";
 
 export const userHandler: UserHandler = (app) => {
   const service = new UserService(app.prisma);
@@ -59,7 +60,7 @@ export const userHandler: UserHandler = (app) => {
       }
 
       return reply.status(StatusCode.SuccessOK).send({
-        data: user,
+        data: sanitizeUser(user),
         status: "success",
         code: CASSuccessCode.DATA_RETRIEVED,
         message: CASSuccessMessage.DATA_RETRIEVED,
@@ -109,7 +110,7 @@ export const userHandler: UserHandler = (app) => {
       const update = await service.updateUser(body, user_id);
 
       return reply.status(StatusCode.SuccessOK).send({
-        data: update,
+        data: update ? sanitizeUser(update) : update,
         status: "success",
         code: CASSuccessCode.DATA_UPDATED,
         message: CASSuccessMessage.DATA_UPDATED,

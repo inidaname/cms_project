@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { generateApiKey } from "../../helpers/generate_apikey";
+import { sha256Hex } from "../../helpers/webcrypto";
 
 export class TeamService {
   prisma: PrismaClientType;
@@ -83,7 +84,10 @@ export class TeamService {
   }
 
   async inviteMember(tenant_id: string, invitedBy: string, email: string, role: string = "USER") {
-    const token = generateApiKey();
+    const rawToken = generateApiKey();
+    // Store only a hash of the invite token; the raw token is returned to the
+    // inviter (for the invite link/email) and never persisted.
+    const tokenHash = await sha256Hex(rawToken);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -95,23 +99,33 @@ export class TeamService {
       throw new Error("User already exists in this tenant");
     }
 
-    return await this.prisma.teamInvite.create({
+    const invite = await this.prisma.teamInvite.create({
       data: {
         tenant_id,
         invitedBy,
         email,
         role: role as any,
-        token,
+        token: tokenHash,
         expiresAt,
       },
     });
+
+    return { ...invite, token: rawToken };
   }
 
   async acceptInvite(token: string, name: string, password: string) {
-    const invite = await this.prisma.teamInvite.findUnique({
-      where: { token },
-      include: { tenant: true },
-    });
+    const tokenHash = await sha256Hex(token);
+    // Legacy rows may still hold the raw token (pre-hash deployments);
+    // fall back so in-flight invitations keep working.
+    const invite =
+      (await this.prisma.teamInvite.findUnique({
+        where: { token: tokenHash },
+        include: { tenant: true },
+      })) ??
+      (await this.prisma.teamInvite.findUnique({
+        where: { token },
+        include: { tenant: true },
+      }));
 
     if (!invite) {
       throw new Error("Invalid invitation");

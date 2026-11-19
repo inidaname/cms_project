@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { sha256Hex } from "../../helpers/webcrypto";
 
 interface SuperAdminStats {
   totalTenants: number;
@@ -24,21 +25,40 @@ export class SuperAdminService {
   }
 
   async findRefreshToken(token: string) {
-    return this.prisma.refreshToken.findUnique({ where: { token } });
+    // Store-and-match hashes only; the raw token is never persisted.
+    const tokenHash = await sha256Hex(token);
+    return (
+      (await this.prisma.refreshToken.findUnique({ where: { token: tokenHash } })) ??
+      (await this.prisma.refreshToken.findUnique({ where: { token } }))
+    );
   }
 
   async rotateRefreshToken(oldToken: string, newToken: string) {
-    return this.prisma.refreshToken.update({
-      where: { token: oldToken },
-      data: {
-        token: newToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
+    const oldHash = await sha256Hex(oldToken);
+    const newHash = await sha256Hex(newToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    try {
+      return await this.prisma.refreshToken.update({
+        where: { token: oldHash },
+        data: { token: newHash, expiresAt },
+      });
+    } catch (error: any) {
+      if (error?.code === "P2025") {
+        // Legacy rows may still hold the raw token; rotate them to a hash.
+        return await this.prisma.refreshToken.update({
+          where: { token: oldToken },
+          data: { token: newHash, expiresAt },
+        });
+      }
+      throw error;
+    }
   }
 
   async deleteRefreshToken(token: string) {
-    return this.prisma.refreshToken.deleteMany({ where: { token } });
+    const tokenHash = await sha256Hex(token);
+    return await this.prisma.refreshToken.deleteMany({
+      where: { token: { in: [tokenHash, token] } },
+    });
   }
 
   paginationMeta(total: number, page: number, limit: number) {

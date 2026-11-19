@@ -8,6 +8,8 @@ declare module "@fastify/jwt" {
       tenant_id?: string;
       role?: string;
       impersonated?: boolean;
+      /** Unique-per-issuance claim on refresh tokens (rotation uniqueness). */
+      jti?: string;
     };
     user: {
       id: string;

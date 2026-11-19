@@ -1,5 +1,6 @@
 import { SuperAdminService } from "./super-admin-service";
 import { generateApiKey } from "../../helpers/generate_apikey";
+import { randomHex, sha256Hex } from "../../helpers/webcrypto";
 import StatusCode from "status-code-enum";
 import { CASErrorCode, CASErrorMessage, CASSuccessCode, CASSuccessMessage } from "../../utils/enums";
 import { sendTenantWelcomeEmail } from "../../helpers/content";
@@ -35,13 +36,13 @@ export const superAdminHandler = (app: FastifyInstance) => {
       });
 
       const refreshToken = app.jwt.sign(
-        { id: admin.id, userType: "refresh_token" },
+        { id: admin.id, userType: "refresh_token", jti: randomHex(16) },
         { expiresIn: "7d" }
       );
 
       await service.prisma.refreshToken.create({
         data: {
-          token: refreshToken,
+          token: await sha256Hex(refreshToken),
           userId: admin.id,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           revoked: false,
@@ -83,7 +84,7 @@ export const superAdminHandler = (app: FastifyInstance) => {
       }
 
       const stored = await service.findRefreshToken(refreshToken);
-      if (!stored || stored.expiresAt < new Date()) {
+      if (!stored || stored.expiresAt < new Date() || stored.revoked) {
         throw {
           statusCode: StatusCode.ClientErrorUnauthorized,
           message: "Invalid or expired refresh token",
@@ -109,7 +110,7 @@ export const superAdminHandler = (app: FastifyInstance) => {
       });
 
       const newRefreshToken = app.jwt.sign(
-        { id: admin.id, userType: "refresh_token" },
+        { id: admin.id, userType: "refresh_token", jti: randomHex(16) },
         { expiresIn: "7d" }
       );
 
@@ -252,7 +253,7 @@ export const superAdminHandler = (app: FastifyInstance) => {
       });
 
       const refreshToken = app.jwt.sign(
-        { id: owner.id, userType: "refresh_token" },
+        { id: owner.id, userType: "refresh_token", jti: randomHex(16) },
         { expiresIn: "1h" }
       );
 

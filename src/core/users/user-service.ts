@@ -29,7 +29,7 @@ export class UserService {
 
     const skip = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       this.prisma.user.findMany({
         where: whereClause,
         include: { tenant: true },
@@ -39,6 +39,9 @@ export class UserService {
       }),
       this.prisma.user.count({ where: whereClause }),
     ]);
+
+    // Password hashes must never reach responses.
+    const data = rows.map(({ password: _password, ...safe }: any) => safe);
 
     return {
       data,

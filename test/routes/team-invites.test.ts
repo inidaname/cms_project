@@ -23,16 +23,19 @@ test("team invitations", async (t: TestContext) => {
     });
     assert.equal(res.statusCode, 201);
 
-    // NOTE: the route's response schema currently serializes the payload to
-    // an empty object (Phase 6 contract finding), so the token is read from
-    // the database.
-    const stored = await fx.prisma.teamInvite.findFirst({
-      where: { email: invitedEmail, tenant_id: fx.tenantA.id },
+    // The raw token is delivered in the response (only its hash is stored).
+    const invite = res.json().data;
+    assert.ok(invite.token, "invite response must deliver the raw token");
+    assert.ok(invite.inviteId);
+    inviteToken = invite.token;
+    inviteId = invite.inviteId;
+
+    // The stored token must not be the raw token (hash at rest).
+    const stored = await fx.prisma.teamInvite.findUnique({
+      where: { id: inviteId },
     });
-    assert.ok(stored, "invite must be persisted for the inviting tenant");
-    assert.ok(stored?.token);
-    inviteToken = stored!.token;
-    inviteId = stored!.id;
+    assert.notEqual(stored?.token, inviteToken, "invite tokens must be hashed at rest");
+    assert.equal(stored?.tenant_id, fx.tenantA.id);
   });
 
   await t.test("an invitation can be accepted exactly once", async () => {

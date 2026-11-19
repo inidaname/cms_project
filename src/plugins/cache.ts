@@ -116,7 +116,6 @@ const cachePlugin: PluginType = async (fastify) => {
     const Redis = (await import("ioredis")).default as any;
     redis = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
       lazyConnect: true,
     });
 
@@ -129,8 +128,22 @@ const cachePlugin: PluginType = async (fastify) => {
       connected = true;
     });
 
-    await redis.connect();
+    // Bound the connection attempt: a closed/unreachable Redis must not
+    // block (or randomly stall) application startup — caching degrades
+    // gracefully and rate limiting fails open.
+    await Promise.race([
+      redis.connect(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Redis connection timed out")), 3_000),
+      ),
+    ]);
   } catch (err) {
+    connected = false;
+    try {
+      redis?.disconnect();
+    } catch {
+      // ignore
+    }
     fastify.log.warn({ err }, "Redis connection failed, caching disabled");
   }
 
@@ -139,8 +152,22 @@ const cachePlugin: PluginType = async (fastify) => {
   fastify.decorate("cache", cache);
 
   fastify.addHook("onClose", async () => {
-    if (redis && connected) {
-      await redis.quit();
+    if (redis) {
+      try {
+        if (connected) {
+          await redis.quit();
+        } else {
+          redis.disconnect();
+        }
+      } catch {
+        // Already disconnected (e.g. the bounded connect timed out) — force
+        // cleanup and ignore.
+        try {
+          redis.disconnect();
+        } catch {
+          // ignore
+        }
+      }
     }
   });
 };

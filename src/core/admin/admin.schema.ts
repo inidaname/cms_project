@@ -391,7 +391,17 @@ export const TeamSchemas = {
         type: "object",
         properties: {
           status: { type: "string" },
-          data: { type: "object" },
+          data: {
+            type: "object",
+            properties: {
+              inviteId: { type: "string", format: "uuid" },
+              email: { type: "string", format: "email" },
+              role: { type: "string", enum: ["ADMIN", "USER"] },
+              expiresAt: { type: "string" },
+              // Raw single-use token for the invite link; only its hash is stored.
+              token: { type: "string" },
+            },
+          },
         },
       },
     },

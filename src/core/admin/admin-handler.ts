@@ -492,7 +492,10 @@ export const adminHandler = (app: FastifyInstance) => {
           data: {
             inviteId: invite.id,
             email: invite.email,
+            role: invite.role,
             expiresAt: invite.expiresAt,
+            // Raw token for the invite link/email; only its hash is stored.
+            token: invite.token,
           },
         });
       } catch (error: any) {

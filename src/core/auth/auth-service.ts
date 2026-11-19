@@ -1,5 +1,6 @@
 import { TenantService } from "../tenants/tenant-service";
 import { UserService } from "../users/user-service";
+import { sha256Hex } from "../../helpers/webcrypto";
 
 export class AuthService {
   user: UserService;
@@ -53,25 +54,54 @@ export class AuthService {
   }
 
   async addRefreshToken(data: RefreshTokenInput) {
-    return await this.prisma.refreshToken.create({ data });
-  }
-
-  async getRefreshToken(token: string) {
-    return await this.prisma.refreshToken.findUnique({ where: { token } });
-  }
-
-  async updateRefreshToken(refreshToken: string, newRefreshToken: string) {
-    return await this.prisma.refreshToken.update({
-      where: { token: refreshToken },
+    // Store only a hash of the refresh token; the raw JWT never touches the
+    // database.
+    const { token, ...rest } = data;
+    return await this.prisma.refreshToken.create({
       data: {
-        token: newRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+        ...rest,
+        token: await sha256Hex(token),
+      } as any,
     });
   }
 
+  async getRefreshToken(token: string) {
+    const tokenHash = await sha256Hex(token);
+    // Legacy rows may still hold the raw token (pre-hash deployments);
+    // fall back so in-flight sessions keep working, and they rotate to
+    // hashed rows on next refresh.
+    return (
+      (await this.prisma.refreshToken.findUnique({ where: { token: tokenHash } })) ??
+      (await this.prisma.refreshToken.findUnique({ where: { token } }))
+    );
+  }
+
+  async updateRefreshToken(refreshToken: string, newRefreshToken: string) {
+    const tokenHash = await sha256Hex(refreshToken);
+    const newTokenHash = await sha256Hex(newRefreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    try {
+      return await this.prisma.refreshToken.update({
+        where: { token: tokenHash },
+        data: { token: newTokenHash, expiresAt },
+      });
+    } catch (error) {
+      if ((error as any)?.code === "P2025") {
+        // Legacy row still stores the raw token; rotate it to the hash.
+        return await this.prisma.refreshToken.update({
+          where: { token: refreshToken },
+          data: { token: newTokenHash, expiresAt },
+        });
+      }
+      throw error;
+    }
+  }
+
   async deleteRefreshToken(token: string) {
-    return await this.prisma.refreshToken.deleteMany({ where: { token } });
+    const tokenHash = await sha256Hex(token);
+    return await this.prisma.refreshToken.deleteMany({
+      where: { token: { in: [tokenHash, token] } },
+    });
   }
 
   async hasSecurityContext(data: {

@@ -6,11 +6,14 @@ interface LoginType {
 type PasswdTokenInput = InputType<import("@prisma/client").PasswordToken>;
 type RefreshTokenInput = InputType<import("@prisma/client").RefreshToken>;
 
+// Response user: password hashes must never be part of handler responses.
+type AuthUser = Omit<import("@prisma/client").User, "password">;
+
 type Authhandler = (app: FastifyInstance) => {
   login: Handler<
     LoginType,
     {
-      user: import("@prisma/client").User;
+      user: AuthUser;
       accessToken: string;
       refreshToken: string;
     }
@@ -18,7 +21,7 @@ type Authhandler = (app: FastifyInstance) => {
   register: Handler<
     Omit<UserInput, "tenant_id">,
     {
-      user: import("@prisma/client").User;
+      user: AuthUser;
       accessToken: string;
       refreshToken: string;
     }

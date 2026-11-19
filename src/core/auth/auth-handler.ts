@@ -7,6 +7,7 @@ import {
   CASSuccessMessage,
 } from "../../utils/enums";
 import { AuthService } from "./auth-service";
+import { sanitizeUser } from "../../utils/sanitize";
 import {
   sendAuthSecurityEmail,
   sendPasswordResetConfirmationEmail,
@@ -48,6 +49,25 @@ export const authHandler: Authhandler = (app) => {
         throw {
           message: "Missing refresh token",
           statusCode: StatusCode.ClientErrorBadRequest,
+          status: "error",
+        };
+      }
+
+      // Ownership: a logout may only revoke the caller's own refresh token.
+      try {
+        const decoded = app.jwt.verify<{ id: string; userType?: string }>(token);
+        if (decoded.userType !== "refresh_token" || decoded.id !== request.user.id) {
+          throw {
+            statusCode: StatusCode.ClientErrorForbidden,
+            message: "Refresh token does not belong to this user",
+            status: "error",
+          };
+        }
+      } catch (error: any) {
+        if (error?.status === "error") throw error;
+        throw {
+          statusCode: StatusCode.ClientErrorUnauthorized,
+          message: "Invalid refresh token",
           status: "error",
         };
       }
@@ -106,7 +126,7 @@ export const authHandler: Authhandler = (app) => {
 
       const stored = await service.getRefreshToken(refreshToken);
 
-      if (!stored || stored.expiresAt < new Date()) {
+      if (!stored || stored.expiresAt < new Date() || stored.revoked) {
         throw {
           message: "Invalid or expired refresh token",
           statusCode: StatusCode.ClientErrorUnauthorized,
@@ -135,6 +155,9 @@ export const authHandler: Authhandler = (app) => {
         {
           id: user.id,
           userType: "refresh_token",
+          // Unique per issuance: two tokens minted in the same second must
+          // never collide (refresh tokens are unique-keyed and rotated).
+          jti: randomHex(16),
         },
         { expiresIn: "7d" },
       );
@@ -275,6 +298,7 @@ export const authHandler: Authhandler = (app) => {
         {
           id: getUser.id,
           userType: "refresh_token",
+          jti: randomHex(16),
         },
         { expiresIn: "7d" },
       );
@@ -312,7 +336,7 @@ export const authHandler: Authhandler = (app) => {
         status: "success",
         code: CASSuccessCode.LOGIN_SUCCESSFUL,
         message: CASSuccessMessage.LOGIN_SUCCESSFUL,
-        data: { accessToken: token, refreshToken, user: getUser },
+        data: { accessToken: token, refreshToken, user: sanitizeUser(getUser) },
       });
     },
     register: async (request, reply) => {
@@ -372,6 +396,7 @@ export const authHandler: Authhandler = (app) => {
         {
           id: user.id,
           userType: "refresh_token",
+          jti: randomHex(16),
         },
         { expiresIn: "7d" },
       );
@@ -387,7 +412,7 @@ export const authHandler: Authhandler = (app) => {
         status: "success",
         code: CASSuccessCode.DATA_CREATED,
         message: CASSuccessMessage.DATA_CREATED,
-        data: { accessToken: token, refreshToken, user },
+        data: { accessToken: token, refreshToken, user: sanitizeUser(user) },
       });
     },
   };
