@@ -57,14 +57,29 @@ export class SalesService {
       };
     }
 
-    const sales = await this.prisma.sales.create({
-      data: {
-        cart_id: cart.id,
-        tenant_id: data.tenant_id,
-        user_id: data.user_id,
-        amount: cart.totalValue,
-      },
-    });
+    let sales;
+    try {
+      sales = await this.prisma.sales.create({
+        data: {
+          cart_id: cart.id,
+          tenant_id: data.tenant_id,
+          user_id: data.user_id,
+          amount: cart.totalValue,
+        },
+      });
+    } catch (error: any) {
+      // Two concurrent checkouts of the same cart: the cart_id unique
+      // constraint decides the winner — the loser gets an explicit conflict
+      // instead of a 500.
+      if (error?.code === "P2002") {
+        throw {
+          statusCode: 409,
+          message: "This cart has already been checked out",
+          status: "error",
+        };
+      }
+      throw error;
+    }
 
     // Transition the cart: an already-checked-out cart must not accept new
     // items or be handed out again by createCart's active-cart dedupe.

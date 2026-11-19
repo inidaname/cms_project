@@ -162,6 +162,108 @@ test("finecore webhook processing", async (t: TestContext) => {
     );
   });
 
+  await t.test("a late FAILED webhook cannot downgrade a completed payment", async () => {
+    const cart = await fx.prisma.cart.create({
+      data: {
+        tenant_id: fx.tenantA.id,
+        user_id: fx.userA.id,
+        totalValue: 15,
+        status: "Checkedout",
+      },
+    });
+    const sale = await fx.prisma.sales.create({
+      data: {
+        cart_id: cart.id,
+        tenant_id: fx.tenantA.id,
+        user_id: fx.userA.id,
+        amount: 15,
+        status: "Paid",
+      },
+    });
+    const payment = await fx.prisma.payments.create({
+      data: {
+        tenant_id: fx.tenantA.id,
+        user_id: fx.userA.id,
+        sales_id: sale.id,
+        reference: `iso1-done-${fx.suffix}`,
+        amount: 15,
+        status: "Success",
+      },
+    });
+
+    const payload = {
+      event: "account_funded",
+      data: {
+        reference: payment.reference,
+        status: "FAILED",
+        metadata: { tenant_id: fx.tenantA.id },
+      },
+    };
+    const res = await app.inject({
+      method: "POST",
+      url: "/webhook/finecore",
+      headers: await signedHeaders(payload),
+      payload,
+    });
+    assert.equal(res.statusCode, 200);
+
+    const after = await fx.prisma.payments.findUnique({ where: { id: payment.id } });
+    assert.equal(after?.status, "Success", "Success is terminal");
+    const afterCart = await fx.prisma.cart.findUnique({ where: { id: cart.id } });
+    assert.equal(afterCart?.status, "Checkedout");
+  });
+
+  await t.test("a late COMPLETED webhook cannot resurrect a returned sale", async () => {
+    const cart = await fx.prisma.cart.create({
+      data: {
+        tenant_id: fx.tenantA.id,
+        user_id: fx.userA.id,
+        totalValue: 30,
+        status: "Checkedout",
+      },
+    });
+    const sale = await fx.prisma.sales.create({
+      data: {
+        cart_id: cart.id,
+        tenant_id: fx.tenantA.id,
+        user_id: fx.userA.id,
+        amount: 30,
+        status: "Returned",
+      },
+    });
+    const payment = await fx.prisma.payments.create({
+      data: {
+        tenant_id: fx.tenantA.id,
+        user_id: fx.userA.id,
+        sales_id: sale.id,
+        reference: `iso1-returned-${fx.suffix}`,
+        amount: 30,
+        status: "Pending",
+      },
+    });
+
+    const payload = {
+      event: "account_funded",
+      data: {
+        reference: payment.reference,
+        status: "COMPLETED",
+        metadata: { tenant_id: fx.tenantA.id },
+      },
+    };
+    const res = await app.inject({
+      method: "POST",
+      url: "/webhook/finecore",
+      headers: await signedHeaders(payload),
+      payload,
+    });
+    assert.equal(res.statusCode, 200);
+
+    const afterPayment = await fx.prisma.payments.findUnique({ where: { id: payment.id } });
+    assert.equal(afterPayment?.status, "Success");
+    const afterSale = await fx.prisma.sales.findUnique({ where: { id: sale.id } });
+    assert.equal(afterSale?.status, "Returned", "returned sale stays returned");
+  });
+
   await t.test("a failed-payment webhook keeps the sale unpaid but records the payment status", async () => {
     const cart = await fx.prisma.cart.create({
       data: {

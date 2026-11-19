@@ -49,7 +49,54 @@ export const paymentHandler = (deps: PaymentHandlerDeps) => {
         });
       }
 
-      const paymentAmount = amount || cart.totalValue;
+      // Payments attach to the sale created by checkout, not to the cart
+      // itself: a cart and its sale are different rows.
+      const sale = await prisma.sales.findFirst({
+        where: { cart_id: cart.id, tenant_id: tenant.id },
+      });
+
+      if (!sale) {
+        return reply.status(StatusCode.ClientErrorBadRequest).send({
+          status: "error",
+          code: "TEM9004",
+          message: "Cart has not been checked out yet",
+        });
+      }
+
+      // The cart total is authoritative: a client-supplied amount that
+      // differs from it is rejected rather than silently charged.
+      const paymentAmount = cart.totalValue;
+      if (amount !== undefined && Number(amount) !== Number(cart.totalValue)) {
+        return reply.status(StatusCode.ClientErrorBadRequest).send({
+          status: "error",
+          code: "TEM9005",
+          message: "Amount does not match the cart total",
+        });
+      }
+
+      // Idempotent initiation: one payment row per sale. A completed payment
+      // is terminal; an in-flight one is returned instead of double-charging
+      // (this check runs before any provider call).
+      const existingPayment = await prisma.payments.findFirst({
+        where: { sales_id: sale.id, tenant_id: tenant.id },
+      });
+
+      if (existingPayment) {
+        if (existingPayment.status === "Success") {
+          return reply.status(StatusCode.ClientErrorConflict).send({
+            status: "error",
+            code: "TEM9006",
+            message: "Payment already completed for this cart",
+          });
+        }
+        return reply.status(StatusCode.ClientErrorConflict).send({
+          status: "error",
+          code: "TEM9007",
+          message: "Payment already initiated for this cart",
+          data: { payment: existingPayment },
+        });
+      }
+
       const paymentReference =
         reference || `ORD_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
@@ -70,18 +117,39 @@ export const paymentHandler = (deps: PaymentHandlerDeps) => {
           },
         });
 
-        const payment = await prisma.payments.create({
-          data: {
-            amount: paymentAmount,
-            channel: "Other",
-            status: "Pending",
-            reference: paymentReference,
-            finecoreTransactionRef: paymentReference,
-            user_id: user.id,
-            tenant_id: tenant.id,
-            sales_id: cart_id,
-          },
-        });
+        const payment = await prisma.payments
+          .create({
+            data: {
+              amount: paymentAmount,
+              channel: "Other",
+              status: "Pending",
+              reference: paymentReference,
+              finecoreTransactionRef: paymentReference,
+              user_id: user.id,
+              tenant_id: tenant.id,
+              sales_id: sale.id,
+            },
+          })
+          .catch((error: any) => {
+            // Lost a race against a concurrent initiation: the sale's unique
+            // one-payment constraint holds; report the existing payment.
+            if (error?.code === "P2002") {
+              return null;
+            }
+            throw error;
+          });
+
+        if (!payment) {
+          const raced = await prisma.payments.findFirst({
+            where: { sales_id: sale.id, tenant_id: tenant.id },
+          });
+          return reply.status(StatusCode.ClientErrorConflict).send({
+            status: "error",
+            code: "TEM9007",
+            message: "Payment already initiated for this cart",
+            data: { payment: raced },
+          });
+        }
 
         return reply.status(StatusCode.SuccessCreated).send({
           status: "success",

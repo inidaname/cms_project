@@ -121,31 +121,45 @@ export const webhookHandler = (deps: WebhookHandlerDeps) => {
       });
 
       if (existingPayment) {
-        const paymentStatus =
+        const incomingStatus =
           status === "COMPLETED"
             ? "Success"
             : status === "FAILED"
               ? "Failed"
               : "Pending";
 
-        await prisma.payments.update({
-          where: { id: existingPayment.id },
-          data: { status: paymentStatus },
-        });
+        // Terminal-state policy: "Success" is terminal for a payment. Late or
+        // reordered webhook deliveries must not downgrade a completed payment
+        // (Failed -> Success recovery and Pending transitions remain allowed).
+        if (existingPayment.status === "Success" && incomingStatus !== "Success") {
+          console.log(
+            `Webhook ignored: refusing to downgrade completed payment ${reference} to ${incomingStatus}`,
+          );
+        } else {
+          await prisma.payments.update({
+            where: { id: existingPayment.id },
+            data: { status: incomingStatus },
+          });
+        }
 
         if (status === "COMPLETED" && existingPayment.paidFor) {
-          await prisma.cart.update({
+          // Only an active cart moves to Checkedout (never resurrect an
+          // abandoned cart), and a returned/cancelled sale is never flipped
+          // back to Paid by a late delivery.
+          await prisma.cart.updateMany({
             where: {
               id: existingPayment.paidFor.cart_id,
               tenant_id: tenantId,
+              status: "Active",
             },
             data: { status: "Checkedout" },
           });
 
-          await prisma.sales.update({
+          await prisma.sales.updateMany({
             where: {
               cart_id: existingPayment.paidFor.cart_id,
               tenant_id: tenantId,
+              OR: [{ status: null }, { status: "Paid" }],
             },
             data: { status: "Paid" },
           });
