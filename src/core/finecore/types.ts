@@ -14,6 +14,14 @@ export interface CheckoutSessionInput {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Payment-provider contract. Finecore is the current implementation; future
+ * providers implement the same surface without touching route handlers.
+ */
+export interface PaymentProvider {
+  createCheckoutSession(input: CheckoutSessionInput): Promise<FinecoreCheckoutResponse>;
+}
+
 export interface FinecoreWebhookPayload {
   event: string;
   data: {

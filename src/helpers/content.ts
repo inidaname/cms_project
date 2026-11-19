@@ -1,6 +1,6 @@
-import { Resend } from "resend";
+import { createPlatformEmailProvider } from "../utils/email";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const emailProvider = createPlatformEmailProvider();
 const FROM_EMAIL = "Hassan Sani <hassan@mainheart.org>";
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -30,9 +30,9 @@ export const sendTenantWelcomeEmail = async (params: {
 }) => {
   const { email, name, tenantName, password, apiKey, domain } = params;
 
-  return await resend.emails.send({
+  return await emailProvider.send({
     from: FROM_EMAIL,
-    to: [email],
+    to: email,
     subject: `Welcome to ${tenantName} - Your Workspace is Ready`,
     html: `
       <div style="${styles.container}">
@@ -75,9 +75,9 @@ export const sendUserWelcomeEmail = async (params: {
 }) => {
   const { email, name, tenantName, password } = params;
 
-  return await resend.emails.send({
+  return await emailProvider.send({
     from: FROM_EMAIL,
-    to: [email],
+    to: email,
     subject: `You've been added to ${tenantName}`,
     html: `
       <div style="${styles.container}">
@@ -119,9 +119,9 @@ export const sendPasswordResetEmail = async (params: {
 }) => {
   const { email, name, tenantName, token, expiresAt } = params;
 
-  return await resend.emails.send({
+  return await emailProvider.send({
     from: FROM_EMAIL,
-    to: [email],
+    to: email,
     subject: `Reset your ${tenantName} password`,
     html: `
       <div style="${styles.container}">
@@ -153,9 +153,9 @@ export const sendPasswordResetConfirmationEmail = async (params: {
 }) => {
   const { email, name, tenantName } = params;
 
-  return await resend.emails.send({
+  return await emailProvider.send({
     from: FROM_EMAIL,
-    to: [email],
+    to: email,
     subject: `Your ${tenantName} password was changed`,
     html: `
       <div style="${styles.container}">
@@ -186,9 +186,9 @@ export const sendAuthSecurityEmail = async (params: {
   const { email, name, tenantName, action, ipAddress, userAgent } = params;
   const actionLabel = action === "login" ? "signed in to" : "signed out of";
 
-  return await resend.emails.send({
+  return await emailProvider.send({
     from: FROM_EMAIL,
-    to: [email],
+    to: email,
     subject: `New ${action} to your ${tenantName} account`,
     html: `
       <div style="${styles.container}">

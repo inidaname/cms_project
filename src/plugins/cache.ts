@@ -1,4 +1,5 @@
 import fp from "fastify-plugin";
+import type { CacheProvider } from "../utils/cache";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -11,7 +12,7 @@ export interface CacheOptions {
   prefix?: string;
 }
 
-export class CacheService {
+export class CacheService implements CacheProvider {
   private redis: any;
   private defaultTTL: number;
   private prefix: string;
@@ -61,8 +62,15 @@ export class CacheService {
     return this.redis.ttl(this.buildKey(key));
   }
 
-  async incr(key: string): Promise<number> {
-    return this.redis.incr(this.buildKey(key));
+  async incr(key: string, ttl?: number): Promise<number> {
+    const built = this.buildKey(key);
+    const current = await this.redis.incr(built);
+    // Fixed-window semantics (contract parity with the KV/in-memory
+    // adapters): the expiry is applied when the counter starts from zero.
+    if (current === 1 && ttl) {
+      await this.redis.expire(built, ttl);
+    }
+    return current;
   }
 
   async decr(key: string): Promise<number> {

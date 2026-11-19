@@ -47,6 +47,19 @@ export function buildUploadKey(): string {
   return `uploads/${crypto.randomUUID()}`;
 }
 
+/**
+ * Storage-provider contract: the Node runtime implements it over the
+ * S3-compatible R2 API; the Worker implements it natively over the R2
+ * binding. Implementations receive only opaque keys — never client filenames.
+ */
+export interface StorageProvider {
+  put(
+    key: string,
+    body: Buffer | ReadableStream | Uint8Array,
+    contentType: string,
+  ): Promise<void>;
+}
+
 export function buildUploadUrl(
   publicBaseUrl: string | undefined,
   key: string,

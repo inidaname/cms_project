@@ -66,11 +66,21 @@ class Scope {
       ...(Array.isArray(opts?.preHandler) ? opts.preHandler : opts?.preHandler ? [opts.preHandler] : []),
       ...(Array.isArray(opts?.onRequest) ? opts.onRequest : opts?.onRequest ? [opts.onRequest] : []),
     ];
+    const hooks = [...this.hooks, ...routeLevel];
+    // Auth detection: match the injected guard by reference first (any hook
+    // the route registered that IS this scope's authenticate function), and
+    // keep the name check as a fallback. A hook with a different function
+    // name that is not the real guard is NOT treated as authentication —
+    // previously, name-based detection alone could silently grant JWT
+    // enforcement to a non-auth hook (or drop it from the real one).
+    const authenticate =
+      hooks.some((hook) => hook !== undefined && hook === this.authenticate) ||
+      hooks.some(isAuthHook);
     this.routes.push({
       method,
       path,
       prefix: "",
-      authenticate: [...this.hooks, ...routeLevel].filter(isAuthHook).length > 0,
+      authenticate,
       schema: opts?.schema,
       handler,
     });

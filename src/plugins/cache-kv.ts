@@ -1,4 +1,6 @@
-export class CacheService {
+import type { CacheProvider } from "../utils/cache";
+
+export class CacheService implements CacheProvider {
   private kv: KVNamespace;
   private defaultTTL: number;
   private prefix: string;
@@ -53,11 +55,35 @@ export class CacheService {
   }
 
   async incr(key: string, ttl?: number): Promise<number> {
+    // Fixed-window counter: the window expiry is embedded in the value
+    // (KV exposes no remaining TTL) and is decided when the counter starts
+    // from zero, mirroring the Redis adapter's SETEX-on-first-hit semantics.
+    // KV increments are not atomic: concurrent writers may lose an
+    // increment — acceptable for rate limiting, which fails open anyway.
     const built = this.buildKey(key);
-    const current = Number((await this.kv.get(built)) || "0");
-    const next = current + 1;
-    await this.kv.put(built, String(next), { expirationTtl: ttl || this.defaultTTL });
-    return next;
+    const seconds = ttl || this.defaultTTL;
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    const raw = await this.kv.get(built);
+    let window: { c: number; exp: number } | null = null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.c === "number" && typeof parsed?.exp === "number") {
+          window = parsed;
+        }
+      } catch {
+        window = null;
+      }
+    }
+
+    const next =
+      window && window.exp > nowSec
+        ? { c: window.c + 1, exp: window.exp }
+        : { c: 1, exp: nowSec + seconds };
+
+    await this.kv.put(built, JSON.stringify(next), { expirationTtl: seconds });
+    return next.c;
   }
 
   async decr(key: string): Promise<number> {

@@ -2,9 +2,10 @@ import {
   FinecoreConfig,
   CheckoutSessionInput,
   FinecoreCheckoutResponse,
+  PaymentProvider,
 } from "./types";
 
-export class FinecoreClient {
+export class FinecoreClient implements PaymentProvider {
   private baseUrl: string;
   private apiKey: string;
 
