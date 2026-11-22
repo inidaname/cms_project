@@ -313,75 +313,6 @@
           }
         },
         {
-          "name": "GET /carts/",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "x-api-key",
-                "value": "{{api_key}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/carts/",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "carts",
-                ""
-              ]
-            },
-            "description": ""
-          }
-        },
-        {
-          "name": "GET /checkout/",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "x-api-key",
-                "value": "{{api_key}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/checkout/",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "checkout",
-                ""
-              ]
-            },
-            "description": ""
-          }
-        },
-        {
-          "name": "GET /product/",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "x-api-key",
-                "value": "{{api_key}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/product/",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "product",
-                ""
-              ]
-            },
-            "description": ""
-          }
-        },
-        {
           "name": "POST /upload/",
           "request": {
             "method": "POST",
@@ -2455,6 +2386,34 @@
           }
         },
         {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/orders/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "orders",
+                ":id"
+              ]
+            },
+            "description": "Single order with customer, payments, delivery, and cart lines (with the purchase-time configuration snapshots)."
+          }
+        },
+        {
           "name": "Update Order Status",
           "request": {
             "method": "PUT",
@@ -3688,6 +3647,47 @@
           }
         },
         {
+          "name": "List Carts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "Active"
+                }
+              ]
+            },
+            "description": "Paginated carts for the authenticated customer (rows include their cart items)."
+          }
+        },
+        {
           "name": "Get Single Cart",
           "request": {
             "method": "GET",
@@ -3906,6 +3906,42 @@
           }
         },
         {
+          "name": "PUT /carts/c/{cart_id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/c/:cart_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "c",
+                ":cart_id"
+              ]
+            },
+            "description": "Attach notes and delivery info to the cart before checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"string\",\n  \"recipientName\": \"string\",\n  \"recipientPhone\": \"string\",\n  \"deliveryAddress\": \"string\",\n  \"deliveryType\": \"PICKUP\"\n}"
+            }
+          }
+        },
+        {
           "name": "Get Single Cart",
           "request": {
             "method": "DELETE",
@@ -3971,6 +4007,43 @@
               "mode": "raw",
               "raw": "{\n  \"cart_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"payment_channel\": \"Card\",\n  \"organization\": {\n    \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n    \"name\": \"string\",\n    \"contactEmail\": \"string\",\n    \"contactPhone\": \"string\",\n    \"address\": \"string\"\n  },\n  \"participants\": [\n    {\n      \"name\": \"string\",\n      \"email\": \"string\",\n      \"role\": \"string\"\n    }\n  ]\n}"
             }
+          }
+        },
+        {
+          "name": "List Checkouts (Order History)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/checkout/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "checkout",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Paginated order history for the authenticated customer. Rows are sales records (sales# fields) plus the source cart (with frozen configuration snapshots), payments, and the paying customer."
           }
         },
         {
@@ -4150,6 +4223,43 @@
           }
         },
         {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "Paginated product list for the tenant. Rows are product records plus merchant relations (variations, counts); envelope is the standard paginated shape."
+          }
+        },
+        {
           "name": "Create Bundle Items",
           "request": {
             "method": "POST",
@@ -4324,7 +4434,7 @@
                 ":product_id"
               ]
             },
-            "description": "fetch signle product by product_id"
+            "description": "fetch signle product by product_id. When the merchant configured a flexible offering, the response includes optionGroups (with choices), offeringSlots, and productVariations."
           }
         },
         {
@@ -4347,7 +4457,7 @@
                 ":product_id"
               ]
             },
-            "description": "fetch signle product by product_id"
+            "description": "fetch signle product by product_id. When the merchant configured a flexible offering, the response includes optionGroups (with choices), offeringSlots, and productVariations."
           }
         },
         {
@@ -4370,7 +4480,7 @@
                 ":product_id"
               ]
             },
-            "description": "fetch signle product by product_id"
+            "description": "fetch signle product by product_id. When the merchant configured a flexible offering, the response includes optionGroups (with choices), offeringSlots, and productVariations."
           }
         }
       ]
@@ -5261,10 +5371,10 @@
                 ""
               ]
             },
-            "description": "Get data of the authenticated user",
+            "description": "Update the authenticated user's profile fields",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"string\"\n}"
+              "raw": "{\n  \"name\": \"string\",\n  \"email\": \"string\",\n  \"phone\": \"string\"\n}"
             }
           }
         }

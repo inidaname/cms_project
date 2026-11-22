@@ -1296,6 +1296,7 @@
             "type": "string",
             "enum": [
               "ACTIVE",
+              "SUSPENDED",
               "EXPIRED",
               "DELETED",
               "OUTDATED",
@@ -1416,6 +1417,90 @@
           "max_items": {
             "type": "integer",
             "nullable": true
+          },
+          "productVariations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/def-6"
+            }
+          },
+          "optionGroups": {
+            "type": "array",
+            "description": "Configurable option groups (present when the merchant configured them).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "min_select": {
+                  "type": "integer"
+                },
+                "max_select": {
+                  "type": "integer"
+                },
+                "choices": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "price_delta": {
+                        "type": "number"
+                      },
+                      "active": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "offeringSlots": {
+            "type": "array",
+            "description": "Bookable time slots (present when the merchant configured them).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "capacity": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "bookedCount": {
+                  "type": "integer"
+                },
+                "location": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
           },
           "createdAt": {
             "type": "string",
@@ -2282,6 +2367,7 @@
             "type": "string",
             "enum": [
               "ACTIVE",
+              "SUSPENDED",
               "EXPIRED",
               "DELETED",
               "OUTDATED",
@@ -2402,6 +2488,90 @@
           "max_items": {
             "type": "integer",
             "nullable": true
+          },
+          "productVariations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/def-6"
+            }
+          },
+          "optionGroups": {
+            "type": "array",
+            "description": "Configurable option groups (present when the merchant configured them).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "min_select": {
+                  "type": "integer"
+                },
+                "max_select": {
+                  "type": "integer"
+                },
+                "choices": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "price_delta": {
+                        "type": "number"
+                      },
+                      "active": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "offeringSlots": {
+            "type": "array",
+            "description": "Bookable time slots (present when the merchant configured them).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "capacity": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "bookedCount": {
+                  "type": "integer"
+                },
+                "location": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
           },
           "createdAt": {
             "type": "string",
@@ -7145,6 +7315,53 @@
         }
       }
     },
+    "/admin/orders/{id}": {
+      "get": {
+        "summary": "Get Order",
+        "tags": [
+          "Admin"
+        ],
+        "description": "Single order with customer, payments, delivery, and cart lines (with the purchase-time configuration snapshots).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Sales row (sales# fields) plus paidBy customer, payments, delivery, and cart with cart items.",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/orders/status": {
       "put": {
         "summary": "Update Order Status",
@@ -9396,9 +9613,90 @@
         }
       },
       "get": {
+        "summary": "List Carts",
+        "tags": [
+          "Carts"
+        ],
+        "description": "Paginated carts for the authenticated customer (rows include their cart items).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Active",
+                "Abandoned",
+                "Checkedout"
+              ]
+            },
+            "in": "query",
+            "name": "filter",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "apiKey": [],
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "description": "Cart rows (cart# fields plus cart items).",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "metadata": {
+                          "$ref": "#/components/schemas/def-2"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -9825,6 +10123,85 @@
       }
     },
     "/carts/c/{cart_id}": {
+      "put": {
+        "tags": [
+          "Carts"
+        ],
+        "description": "Attach notes and delivery info to the cart before checkout",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "type": "string"
+                  },
+                  "recipientName": {
+                    "type": "string"
+                  },
+                  "recipientPhone": {
+                    "type": "string"
+                  },
+                  "deliveryAddress": {
+                    "type": "string"
+                  },
+                  "deliveryType": {
+                    "type": "string",
+                    "enum": [
+                      "PICKUP",
+                      "DELIVERY",
+                      "SHIPPING"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "cart_id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": [],
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/def-1"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/def-8"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "summary": "Get Single Cart",
         "tags": [
@@ -9990,9 +10367,77 @@
         }
       },
       "get": {
+        "summary": "List Checkouts (Order History)",
+        "tags": [
+          "Checkout"
+        ],
+        "description": "Paginated order history for the authenticated customer. Rows are sales records (sales# fields) plus the source cart (with frozen configuration snapshots), payments, and the paying customer.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "apiKey": [],
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "description": "Sales rows (sales# fields plus cart with configuration snapshots, payments, paidBy customer).",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "metadata": {
+                          "$ref": "#/components/schemas/def-2"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -10209,6 +10654,82 @@
                               "type": "string",
                               "format": "date-time",
                               "description": "When the checkout session expires"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A payment already exists for this sale (idempotent initiation). The existing payment is returned in data.payment — verify or resume it via GET /payments/verify/{payment.reference}. The hosted-checkout return query parameters are provider-controlled; treat the `reference` returned here (or carried in return URLs) as the only verification input, never as proof of payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "A payment already exists for this sale (idempotent initiation). The existing payment is returned in data.payment — verify or resume it via GET /payments/verify/{payment.reference}. The hosted-checkout return query parameters are provider-controlled; treat the `reference` returned here (or carried in return URLs) as the only verification input, never as proof of payment.",
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "payment": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "channel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "amount": {
+                              "type": "number"
+                            },
+                            "status": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "reference": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "finecoreTransactionRef": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "authType": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "requiresAuth": {
+                              "type": "boolean"
+                            },
+                            "user_id": {
+                              "type": "string"
+                            },
+                            "tenant_id": {
+                              "type": "string"
+                            },
+                            "sales_id": {
+                              "type": "string"
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "type": "string"
                             }
                           }
                         }
@@ -10531,9 +11052,85 @@
         }
       },
       "get": {
+        "summary": "List Products",
+        "tags": [
+          "Products"
+        ],
+        "description": "Paginated product list for the tenant. Rows are product records plus merchant relations (variations, counts); envelope is the standard paginated shape.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "filter",
+            "required": false,
+            "description": "Title search"
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "description": "Product rows (product# fields plus merchant relations).",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "metadata": {
+                          "$ref": "#/components/schemas/def-2"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -10846,7 +11443,7 @@
         "tags": [
           "Products"
         ],
-        "description": "fetch signle product by product_id",
+        "description": "fetch signle product by product_id. When the merchant configured a flexible offering, the response includes optionGroups (with choices), offeringSlots, and productVariations.",
         "parameters": [
           {
             "schema": {
@@ -10888,7 +11485,7 @@
         "tags": [
           "Products"
         ],
-        "description": "fetch signle product by product_id",
+        "description": "fetch signle product by product_id. When the merchant configured a flexible offering, the response includes optionGroups (with choices), offeringSlots, and productVariations.",
         "parameters": [
           {
             "schema": {
@@ -10930,7 +11527,7 @@
         "tags": [
           "Products"
         ],
-        "description": "fetch signle product by product_id",
+        "description": "fetch signle product by product_id. When the merchant configured a flexible offering, the response includes optionGroups (with choices), offeringSlots, and productVariations.",
         "parameters": [
           {
             "schema": {
@@ -11585,7 +12182,90 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenant_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            },
+                            "name": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "OWNER",
+                                "ADMIN",
+                                "USER"
+                              ]
+                            },
+                            "agreed": {
+                              "type": "boolean",
+                              "nullable": true
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            },
+                            "hasNextPage": {
+                              "type": "boolean"
+                            },
+                            "hasPrevPage": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -11642,7 +12322,55 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "description": "Product row (product# fields).",
+                            "additionalProperties": true
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            },
+                            "hasNextPage": {
+                              "type": "boolean"
+                            },
+                            "hasPrevPage": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -11699,7 +12427,55 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "description": "Sales row (sales# fields) plus cart with cart items.",
+                            "additionalProperties": true
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            },
+                            "hasNextPage": {
+                              "type": "boolean"
+                            },
+                            "hasPrevPage": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -11756,7 +12532,53 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/def-10"
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            },
+                            "hasNextPage": {
+                              "type": "boolean"
+                            },
+                            "hasPrevPage": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -11813,7 +12635,136 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenant_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "user_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "nullable": true
+                              },
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "CREATE",
+                                  "UPDATE",
+                                  "DELETE",
+                                  "LOGIN",
+                                  "LOGOUT",
+                                  "INVITE",
+                                  "REMOVE",
+                                  "TRANSFER"
+                                ]
+                              },
+                              "entityType": {
+                                "type": "string",
+                                "enum": [
+                                  "USER",
+                                  "PRODUCT",
+                                  "ORDER",
+                                  "PAYMENT",
+                                  "SETTINGS",
+                                  "TEAM",
+                                  "PROJECT"
+                                ]
+                              },
+                              "entityId": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "details": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "nullable": true
+                              },
+                              "ipAddress": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "userAgent": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "user": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "nullable": true
+                                  }
+                                }
+                              },
+                              "tenant": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            },
+                            "hasNextPage": {
+                              "type": "boolean"
+                            },
+                            "hasPrevPage": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -11863,7 +12814,106 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenant_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            },
+                            "name": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "OWNER",
+                                "ADMIN",
+                                "USER",
+                                "SUPER_ADMIN"
+                              ]
+                            },
+                            "agreed": {
+                              "type": "boolean",
+                              "nullable": true
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "type": "string"
+                            },
+                            "tenant": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "domain": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            },
+                            "hasNextPage": {
+                              "type": "boolean"
+                            },
+                            "hasPrevPage": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -12025,7 +13075,136 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenant_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "user_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "nullable": true
+                              },
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "CREATE",
+                                  "UPDATE",
+                                  "DELETE",
+                                  "LOGIN",
+                                  "LOGOUT",
+                                  "INVITE",
+                                  "REMOVE",
+                                  "TRANSFER"
+                                ]
+                              },
+                              "entityType": {
+                                "type": "string",
+                                "enum": [
+                                  "USER",
+                                  "PRODUCT",
+                                  "ORDER",
+                                  "PAYMENT",
+                                  "SETTINGS",
+                                  "TEAM",
+                                  "PROJECT"
+                                ]
+                              },
+                              "entityId": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "details": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "nullable": true
+                              },
+                              "ipAddress": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "userAgent": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "user": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "nullable": true
+                                  }
+                                }
+                              },
+                              "tenant": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            },
+                            "hasNextPage": {
+                              "type": "boolean"
+                            },
+                            "hasPrevPage": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -12643,7 +13822,7 @@
         "tags": [
           "User"
         ],
-        "description": "Get data of the authenticated user",
+        "description": "Update the authenticated user's profile fields",
         "requestBody": {
           "required": true,
           "content": {
@@ -12652,6 +13831,13 @@
                 "type": "object",
                 "properties": {
                   "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "phone": {
                     "type": "string"
                   }
                 }
