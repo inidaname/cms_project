@@ -1,0 +1,5306 @@
+{
+  "info": {
+    "name": "Possible CMS API",
+    "description": {
+      "type": "text/markdown",
+      "version": "1.0.0",
+      "content": "Multi-tenant commerce and campaign CMS API.\n\n**Auth model**\n- Tenant routes: `x-api-key` (tenant identity + status) **and** a `Bearer` JWT belonging to that tenant.\n- Admin routes (`/admin/*`): additionally require an OWNER or ADMIN role token.\n- Super-admin routes (`/super-admin/*`): platform JWT only (no tenant API key).\n- Public: `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/tenants/onboard`, `/admin/team/invite/accept`, `/webhook/finecore` (signature-verified), docs/health.\n\n**Environment variables**\n- `base_url` — e.g. http://localhost:7373\n- `api_key` — a tenant API key (created at onboarding or via super-admin impersonation)\n- `access_token`, `refresh_token` — set automatically by the Setup folder\n- `super_admin_token` — set by the platform login in Setup\n\nGenerate this collection's companion OpenAPI document: `docs/contract/openapi.json`."
+    },
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "b3c1d2e3-4f56-7890-abcd-ef0123456789"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "in",
+        "value": "header"
+      },
+      {
+        "key": "key",
+        "value": "x-api-key"
+      },
+      {
+        "key": "value",
+        "value": "{{api_key}}"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:7373"
+    },
+    {
+      "key": "api_key",
+      "value": "REPLACE_WITH_TENANT_API_KEY"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "super_admin_token",
+      "value": ""
+    },
+    {
+      "key": "super_admin_refresh_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "description": "Run these first. Login requests automatically store tokens in collection variables.",
+      "item": [
+        {
+          "name": "Tenant — Login (sets access_token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"owner@example.test\",\"password\":\"super-secret-123\"}"
+            },
+            "description": "Authenticate a tenant user. Requires the tenant's API key. Sets `access_token` and `refresh_token`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.collectionVariables.set('access_token', data.accessToken);",
+                  "  pm.collectionVariables.set('refresh_token', data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tenant — Register (sets access_token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"newuser@example.test\",\"password\":\"super-secret-123\",\"name\":\"New User\"}"
+            },
+            "description": "Register a user for the tenant (first user of a tenant becomes OWNER)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.collectionVariables.set('access_token', data.accessToken);",
+                  "  pm.collectionVariables.set('refresh_token', data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tenant — Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh-token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "refresh-token"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refreshToken\":\"{{refresh_token}}\"}"
+            },
+            "description": "Exchange a refresh token for a new access + refresh token pair (rotation: the old refresh token is invalidated)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.collectionVariables.set('access_token', data.accessToken);",
+                  "  pm.collectionVariables.set('refresh_token', data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Platform — Super admin login (sets super_admin_token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"superadmin@example.test\",\"password\":\"super-secret-123\"}"
+            },
+            "description": "Platform login. No tenant API key. Sets `super_admin_token`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  const data = body.data || body;",
+                  "  if (data.accessToken) pm.collectionVariables.set('super_admin_token', data.accessToken);",
+                  "  if (data.refreshToken) pm.collectionVariables.set('super_admin_refresh_token', data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Other",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ping"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /carts/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /checkout/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/checkout/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "checkout",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /product/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /upload/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/upload/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /users/tenant/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/tenant/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "tenant",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Create Offering Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/offering-types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "offering-types"
+              ]
+            },
+            "description": "Define a tenant offering type. Behavior flags are generic primitives (selectable/scheduled/participants/deliverable), not industry concepts.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"string\",\n  \"name\": \"string\",\n  \"selectable\": false,\n  \"scheduled\": false,\n  \"participants\": false,\n  \"deliverable\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "List Offering Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/offering-types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "offering-types"
+              ]
+            },
+            "description": "List the tenant's offering types."
+          }
+        },
+        {
+          "name": "Get Offering Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/offering-types/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "offering-types",
+                ":id"
+              ]
+            },
+            "description": "Get a single tenant offering type."
+          }
+        },
+        {
+          "name": "Update Offering Type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/offering-types/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "offering-types",
+                ":id"
+              ]
+            },
+            "description": "Update a tenant offering type (flags, key, or name).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"string\",\n  \"name\": \"string\",\n  \"selectable\": false,\n  \"scheduled\": false,\n  \"participants\": false,\n  \"deliverable\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Offering Type",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/offering-types/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "offering-types",
+                ":id"
+              ]
+            },
+            "description": "Delete a tenant offering type."
+          }
+        },
+        {
+          "name": "Create Option Group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/:product_id/option-groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                ":product_id",
+                "option-groups"
+              ]
+            },
+            "description": "Add a configurable option group to a product (min/max selection rules). Generalizes the configurable-selection primitive.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"required\": false,\n  \"min_select\": 0,\n  \"max_select\": 1,\n  \"position\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "List Option Groups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/:product_id/option-groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                ":product_id",
+                "option-groups"
+              ]
+            },
+            "description": "List a product's option groups with their choices."
+          }
+        },
+        {
+          "name": "Update Option Group",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/option-groups/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "option-groups",
+                ":id"
+              ]
+            },
+            "description": "Update an option group's rules.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"required\": false,\n  \"min_select\": 0,\n  \"max_select\": 1,\n  \"position\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Option Group",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/option-groups/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "option-groups",
+                ":id"
+              ]
+            },
+            "description": "Delete an option group (its choices are removed with it)."
+          }
+        },
+        {
+          "name": "Add Option Choice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/option-groups/:group_id/choices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "option-groups",
+                ":group_id",
+                "choices"
+              ]
+            },
+            "description": "Add a choice to an option group. An optional linked product ties stock/depletion to the choice; price_delta adjusts the line price.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"string\",\n  \"product_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"price_delta\": 0,\n  \"active\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Option Choice",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/option-choices/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "option-choices",
+                ":id"
+              ]
+            },
+            "description": "Update an option choice (label, price, active, linked product).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"string\",\n  \"product_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"price_delta\": 0,\n  \"active\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Option Choice",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/option-choices/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "option-choices",
+                ":id"
+              ]
+            },
+            "description": "Delete an option choice."
+          }
+        },
+        {
+          "name": "Create Offering Slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/:product_id/slots",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                ":product_id",
+                "slots"
+              ]
+            },
+            "description": "Create a schedulable, capacity-limited slot for an offering (scheduling + capacity primitive).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startsAt\": \"string\",\n  \"endsAt\": \"string\",\n  \"capacity\": 1,\n  \"location\": \"string\",\n  \"notes\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Offering Slots",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/:product_id/slots",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                ":product_id",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "upcoming",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "List an offering's slots. `?upcoming=true` filters to future slots."
+          }
+        },
+        {
+          "name": "Update Offering Slot",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/slots/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "slots",
+                ":id"
+              ]
+            },
+            "description": "Update a slot's dates, capacity, location, or notes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startsAt\": \"string\",\n  \"endsAt\": \"string\",\n  \"capacity\": 1,\n  \"location\": \"string\",\n  \"notes\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Offering Slot",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/slots/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "slots",
+                ":id"
+              ]
+            },
+            "description": "Delete a slot."
+          }
+        },
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "7d"
+                }
+              ]
+            },
+            "description": "Get dashboard statistics including sales, revenue, users, and products"
+          }
+        },
+        {
+          "name": "Get Revenue Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/revenue",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "day"
+                }
+              ]
+            },
+            "description": "Get detailed revenue analytics grouped by period and channel"
+          }
+        },
+        {
+          "name": "Get User Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "users"
+              ]
+            },
+            "description": "Get user statistics and top customers"
+          }
+        },
+        {
+          "name": "Get Product Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "products"
+              ]
+            },
+            "description": "Get product statistics including sales and low stock items"
+          }
+        },
+        {
+          "name": "Get All Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "stats"
+              ]
+            },
+            "description": "Get complete overview of all tenant statistics"
+          }
+        },
+        {
+          "name": "Get Full Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/report",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "string"
+                },
+                {
+                  "key": "endDate",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "Get comprehensive report with optional date range filter"
+          }
+        },
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/projects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "projects"
+              ]
+            },
+            "description": "Create a new project within the tenant",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"settings\": {}\n}"
+            }
+          }
+        },
+        {
+          "name": "List Projects",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/projects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "projects"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "0"
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE"
+                }
+              ]
+            },
+            "description": "Get all projects for the tenant"
+          }
+        },
+        {
+          "name": "Get Project",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/projects/:project_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "projects",
+                ":project_id"
+              ]
+            },
+            "description": "Get a specific project by ID"
+          }
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/projects/:project_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "projects",
+                ":project_id"
+              ]
+            },
+            "description": "Update a project",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"settings\": {},\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Project",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/projects/:project_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "projects",
+                ":project_id"
+              ]
+            },
+            "description": "Soft delete a project"
+          }
+        },
+        {
+          "name": "Archive Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/projects/:project_id/archive",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "projects",
+                ":project_id",
+                "archive"
+              ]
+            },
+            "description": "Archive a project"
+          }
+        },
+        {
+          "name": "List Team Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "0"
+                },
+                {
+                  "key": "role",
+                  "value": "OWNER"
+                }
+              ]
+            },
+            "description": "Get all team members for the tenant"
+          }
+        },
+        {
+          "name": "Get Team Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team/:user_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team",
+                ":user_id"
+              ]
+            },
+            "description": "Get a specific team member by ID"
+          }
+        },
+        {
+          "name": "Remove Team Member",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team/:user_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team",
+                ":user_id"
+              ]
+            },
+            "description": "Remove a team member from the tenant"
+          }
+        },
+        {
+          "name": "Update Member Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team/:user_id/role",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team",
+                ":user_id",
+                "role"
+              ]
+            },
+            "description": "Update a team member's role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Invite Team Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team/invite",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team",
+                "invite"
+              ]
+            },
+            "description": "Send an invitation to join the tenant",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Accept Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team/invite/accept",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team",
+                "invite",
+                "accept"
+              ]
+            },
+            "description": "Accept a team invitation and create account",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"REPLACE_WITH_TOKEN\",\n  \"name\": \"string\",\n  \"password\": \"super-secret-123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Pending Invites",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team/invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team",
+                "invites"
+              ]
+            },
+            "description": "Get all pending team invitations"
+          }
+        },
+        {
+          "name": "Cancel Invite",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/team/invites/:invite_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "team",
+                "invites",
+                ":invite_id"
+              ]
+            },
+            "description": "Cancel a pending team invitation"
+          }
+        },
+        {
+          "name": "List Subscribers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/subscribers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "subscribers"
+              ]
+            },
+            "description": "Get all email subscribers for the tenant"
+          }
+        },
+        {
+          "name": "Create Subscriber",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/subscribers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "subscribers"
+              ]
+            },
+            "description": "Add a new subscriber",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"name\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Subscriber",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/subscribers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "subscribers"
+              ]
+            },
+            "description": "Update subscriber details",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"email\": \"string\",\n  \"name\": \"string\",\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Subscriber",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/subscribers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "subscribers"
+              ]
+            },
+            "description": "Remove a subscriber",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Bulk Import Subscribers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/subscribers/import",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "subscribers",
+                "import"
+              ]
+            },
+            "description": "Import multiple subscribers at once",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emails\": [\n    \"string\"\n  ],\n  \"names\": {}\n}"
+            }
+          }
+        },
+        {
+          "name": "List Lists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lists",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lists"
+              ]
+            },
+            "description": "Get all subscriber lists"
+          }
+        },
+        {
+          "name": "Create List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lists",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lists"
+              ]
+            },
+            "description": "Create a new subscriber list",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Subscribers to List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lists/add-subscribers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lists",
+                "add-subscribers"
+              ]
+            },
+            "description": "Add multiple subscribers to a list",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"list_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"subscriber_ids\": [\n    \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove Subscribers from List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lists/remove-subscribers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lists",
+                "remove-subscribers"
+              ]
+            },
+            "description": "Remove subscribers from a list",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"list_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"subscriber_ids\": [\n    \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete List",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lists/:list_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lists",
+                ":list_id"
+              ]
+            },
+            "description": "Delete a subscriber list"
+          }
+        },
+        {
+          "name": "List Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns"
+              ]
+            },
+            "description": "Get all email campaigns"
+          }
+        },
+        {
+          "name": "Create Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns"
+              ]
+            },
+            "description": "Create a new email campaign",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"string\",\n  \"htmlBody\": \"string\",\n  \"textBody\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns"
+              ]
+            },
+            "description": "Update a campaign",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"subject\": \"string\",\n  \"htmlBody\": \"string\",\n  \"textBody\": \"string\",\n  \"status\": \"DRAFT\",\n  \"scheduledAt\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Send Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/send",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "send"
+              ]
+            },
+            "description": "Send a campaign to subscribers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaign_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"list_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/:campaign_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                ":campaign_id"
+              ]
+            },
+            "description": "Delete a campaign"
+          }
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "search",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "Get all products with pagination and search"
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products"
+              ]
+            },
+            "description": "Create a new product",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"price\": 0,\n  \"quantity\": 0,\n  \"attributes\": {},\n  \"variation\": false,\n  \"status\": \"Available\",\n  \"isBundle\": false,\n  \"isFeatured\": false,\n  \"min_items\": 0,\n  \"max_items\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products"
+              ]
+            },
+            "description": "Update a product",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"price\": 0,\n  \"quantity\": 0,\n  \"attributes\": {},\n  \"variation\": false,\n  \"status\": \"Available\",\n  \"isBundle\": false,\n  \"isFeatured\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Product",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                ":product_id"
+              ]
+            },
+            "description": "Get a single product with variations and bundle components"
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                ":product_id"
+              ]
+            },
+            "description": "Mark a product as discontinued"
+          }
+        },
+        {
+          "name": "Add Product Variation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/variation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                "variation"
+              ]
+            },
+            "description": "Add a variation to a product",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"type\": \"Color\",\n  \"value\": \"string\",\n  \"price\": 0,\n  \"quantity\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Product Variation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/variation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                "variation"
+              ]
+            },
+            "description": "Update a product variation",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variation_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"type\": \"Color\",\n  \"value\": \"string\",\n  \"price\": 0,\n  \"quantity\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Product Variation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/variation/:variation_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                "variation",
+                ":variation_id"
+              ]
+            },
+            "description": "Delete a product variation"
+          }
+        },
+        {
+          "name": "Add Components to Bundle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/bundle/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                "bundle",
+                ":product_id"
+              ]
+            },
+            "description": "Add selectable components to a bundle product",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"components\": [\n    {\n      \"child_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n      \"additionalPrice\": 0\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Edit Bundle Components",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/bundle/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                "bundle",
+                ":product_id"
+              ]
+            },
+            "description": "Update components of a bundle product",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"components\": [\n    {\n      \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n      \"child_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n      \"additionalPrice\": 0\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "List Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "orders"
+              ]
+            },
+            "description": "Get all orders/sales"
+          }
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/orders/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "orders",
+                "status"
+              ]
+            },
+            "description": "Update order status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"status\": \"Delivered\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Delivery",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/orders/delivery",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "orders",
+                "delivery"
+              ]
+            },
+            "description": "Update delivery information",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"status\": \"PENDING\",\n  \"address\": \"string\",\n  \"recipientName\": \"string\",\n  \"recipientPhone\": \"string\",\n  \"trackingNumber\": \"string\",\n  \"estimatedArrival\": \"string\",\n  \"notes\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "payments"
+              ]
+            },
+            "description": "Get all payments"
+          }
+        },
+        {
+          "name": "Refund Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/payments/refund",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "payments",
+                "refund"
+              ]
+            },
+            "description": "Refund a payment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Discounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/discounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "discounts"
+              ]
+            },
+            "description": "Get all discounts"
+          }
+        },
+        {
+          "name": "Create Discount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/discounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "discounts"
+              ]
+            },
+            "description": "Create a new discount",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"string\",\n  \"percentage\": 0,\n  \"active\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Discount",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/discounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "discounts"
+              ]
+            },
+            "description": "Update a discount",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"title\": \"string\",\n  \"percentage\": 0,\n  \"active\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Toggle Discount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/discounts/toggle",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "discounts",
+                "toggle"
+              ]
+            },
+            "description": "Enable or disable a discount",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"active\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Discount",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/discounts/:discount_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "discounts",
+                ":discount_id"
+              ]
+            },
+            "description": "Delete a discount"
+          }
+        },
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/audit-logs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "0"
+                },
+                {
+                  "key": "user_id",
+                  "value": "9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f"
+                },
+                {
+                  "key": "action",
+                  "value": "CREATE"
+                },
+                {
+                  "key": "entityType",
+                  "value": "USER"
+                },
+                {
+                  "key": "startDate",
+                  "value": "string"
+                },
+                {
+                  "key": "endDate",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "Get audit logs with optional filters"
+          }
+        },
+        {
+          "name": "Get Entity History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/audit-logs/entity/:entityType/:entityId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "audit-logs",
+                "entity",
+                ":entityType",
+                ":entityId"
+              ]
+            },
+            "description": "Get the audit history for a specific entity"
+          }
+        },
+        {
+          "name": "Get User Activity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/audit-logs/user/:user_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "audit-logs",
+                "user",
+                ":user_id"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get audit logs for a specific user"
+          }
+        },
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "settings"
+              ]
+            },
+            "description": "Get tenant settings"
+          }
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "settings"
+              ]
+            },
+            "description": "Update tenant settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeName\": \"string\",\n  \"storeLogo\": \"string\",\n  \"storeDescription\": \"string\",\n  \"contactEmail\": \"string\",\n  \"contactPhone\": \"string\",\n  \"address\": \"string\",\n  \"timezone\": \"string\",\n  \"currency\": \"string\",\n  \"taxRate\": 0,\n  \"notificationPreferences\": {}\n}"
+            }
+          }
+        },
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get all notifications"
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications/unread-count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications",
+                "unread-count"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f"
+                }
+              ]
+            },
+            "description": "Get count of unread notifications"
+          }
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications/mark-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications",
+                "mark-read"
+              ]
+            },
+            "description": "Mark a notification as read",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notification_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications/mark-all-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications",
+                "mark-all-read"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f"
+                }
+              ]
+            },
+            "description": "Mark all notifications as read"
+          }
+        },
+        {
+          "name": "Send Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications/send",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications",
+                "send"
+              ]
+            },
+            "description": "Send a notification",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"type\": \"EMAIL\",\n  \"priority\": \"LOW\",\n  \"title\": \"string\",\n  \"body\": \"string\",\n  \"data\": {}\n}"
+            }
+          }
+        },
+        {
+          "name": "Notify All Admins",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications/notify-admins",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications",
+                "notify-admins"
+              ]
+            },
+            "description": "Send notification to all admin users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"string\",\n  \"body\": \"string\",\n  \"data\": {},\n  \"type\": \"EMAIL\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Send From Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications/send-template",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications",
+                "send-template"
+              ]
+            },
+            "description": "Send notification using a template",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"templateName\": \"string\",\n  \"user_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"variables\": {},\n  \"sendTo\": {\n    \"email\": \"string\",\n    \"push\": false,\n    \"inApp\": false\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Trigger Event Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notifications/trigger-event",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notifications",
+                "trigger-event"
+              ]
+            },
+            "description": "Trigger automatic notification for an event",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"new_sale\",\n  \"data\": {}\n}"
+            }
+          }
+        },
+        {
+          "name": "List Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notification-templates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notification-templates"
+              ]
+            },
+            "description": "Get all notification templates"
+          }
+        },
+        {
+          "name": "Create Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notification-templates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notification-templates"
+              ]
+            },
+            "description": "Create a notification template",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"type\": \"EMAIL\",\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"variables\": [\n    \"string\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/notification-templates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "notification-templates"
+              ]
+            },
+            "description": "Update a notification template",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"name\": \"string\",\n  \"type\": \"EMAIL\",\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"variables\": [\n    \"string\"\n  ],\n  \"active\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Push Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/push-tokens/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "push-tokens",
+                "register"
+              ]
+            },
+            "description": "Register a device push token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"REPLACE_WITH_TOKEN\",\n  \"platform\": \"ios\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove Push Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/push-tokens/remove",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "push-tokens",
+                "remove"
+              ]
+            },
+            "description": "Remove a device push token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"REPLACE_WITH_TOKEN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Notification Preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/preferences/notifications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "preferences",
+                "notifications"
+              ]
+            },
+            "description": "Get user notification preferences"
+          }
+        },
+        {
+          "name": "Update Notification Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/preferences/notifications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "preferences",
+                "notifications"
+              ]
+            },
+            "description": "Update user notification preferences",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailNotifications\": false,\n  \"pushNotifications\": false,\n  \"smsNotifications\": false,\n  \"inAppNotifications\": false,\n  \"notifyOnSale\": false,\n  \"notifyOnPayment\": false,\n  \"notifyOnLowStock\": false,\n  \"notifyOnNewUser\": false,\n  \"notifyOnCampaign\": false,\n  \"quietHoursStart\": \"string\",\n  \"quietHoursEnd\": \"string\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new user account for a tenant",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"password\": \"super-secret-123\",\n  \"phone\": \"string\",\n  \"name\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticate a user and receive JWT tokens",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"password\": \"super-secret-123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Request Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "Request a password reset link via email or SMS",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"phone\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "Reset password using a token received via email/SMS",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"REPLACE_WITH_TOKEN\",\n  \"password\": \"super-secret-123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh-token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "refresh-token"
+              ]
+            },
+            "description": "Exchange a refresh token for new access and refresh tokens",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Invalidate a refresh token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Carts",
+      "item": [
+        {
+          "name": "Start Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                ""
+              ]
+            },
+            "description": "Start an empty Cart"
+          }
+        },
+        {
+          "name": "Get Single Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/items/cart/:cart_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "items",
+                "cart",
+                ":cart_id"
+              ]
+            },
+            "description": "Get Cart and the items by cart_id"
+          }
+        },
+        {
+          "name": "Get Item",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/items/:item_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "items",
+                ":item_id"
+              ]
+            },
+            "description": "Get an item from a cart by the Cart's item_id"
+          }
+        },
+        {
+          "name": "Edit Item Quantity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/items/:item_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "items",
+                ":item_id"
+              ]
+            },
+            "description": "Edit Item Quantity",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_quantity\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/items/:item_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "items",
+                ":item_id"
+              ]
+            },
+            "description": "Remove an item from a cart"
+          }
+        },
+        {
+          "name": "Add Items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/items/:cart_id?",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "items",
+                ":cart_id?"
+              ]
+            },
+            "description": "Add items to an existing cart or create one if cart_id is missing",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"variation_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"product_quantity\": 1,\n  \"selections\": {\n    \"groups\": [\n      {\n        \"group_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n        \"choices\": [\n          {\n            \"choice_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n            \"quantity\": 1\n          }\n        ]\n      }\n    ],\n    \"slot_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n    \"participants\": 1\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Single Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/c/:cart_id?",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "c",
+                ":cart_id?"
+              ]
+            },
+            "description": "Get Cart and the items by cart_id"
+          }
+        },
+        {
+          "name": "Edit cart",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/c/status/:cart_id?",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "c",
+                "status",
+                ":cart_id?"
+              ]
+            },
+            "description": "Edit Cart status by cart_id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Active\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Single Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/carts/c/:cart_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "carts",
+                "c",
+                ":cart_id"
+              ]
+            },
+            "description": "Get Cart and the items by cart_id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Checkout",
+      "item": [
+        {
+          "name": "Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/checkout/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "checkout",
+                ""
+              ]
+            },
+            "description": "Convert a cart into a sale/checkout session",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cart_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"payment_channel\": \"Card\",\n  \"organization\": {\n    \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n    \"name\": \"string\",\n    \"contactEmail\": \"string\",\n    \"contactPhone\": \"string\",\n    \"address\": \"string\"\n  },\n  \"participants\": [\n    {\n      \"name\": \"string\",\n      \"email\": \"string\",\n      \"role\": \"string\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Checkout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/checkout/:checkout_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "checkout",
+                ":checkout_id"
+              ]
+            },
+            "description": "Convert a cart into a sale/checkout session"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create Checkout Link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/checkout-link",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "checkout-link"
+              ]
+            },
+            "description": "Create a Finecore hosted checkout session that supports all payment methods (card, bank transfer, USSD, QR code). Returns a checkout_url for the customer to complete payment. Payment status is confirmed asynchronously via the Finecore webhook.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cart_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n  \"amount\": 0,\n  \"reference\": \"string\",\n  \"success_url\": \"string\",\n  \"cancel_url\": \"string\",\n  \"metadata\": {}\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Payment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/verify/:reference",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "verify",
+                ":reference"
+              ]
+            },
+            "description": "Check the status of a payment by reference."
+          }
+        },
+        {
+          "name": "List Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "0"
+                },
+                {
+                  "key": "filter",
+                  "value": "Success"
+                }
+              ]
+            },
+            "description": "Get paginated list of payments for the tenant."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "POST /product/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                ""
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"string\",\n  \"imageURL\": \"string\",\n  \"description\": \"string\",\n  \"price\": 0,\n  \"attributes\": {},\n  \"quantity\": 0,\n  \"variation\": false,\n  \"isBundle\": false,\n  \"isFeatured\": false,\n  \"min_items\": 0,\n  \"max_items\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Bundle Items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/bundle/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                "bundle",
+                ":product_id"
+              ]
+            },
+            "description": "Assign products that can be chosen",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"child_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n    \"additionalPrice\": 0\n  }\n]"
+            }
+          }
+        },
+        {
+          "name": "GET /product/variation/{product_id}/{variation_id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/variation/:product_id/:variation_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                "variation",
+                ":product_id",
+                ":variation_id"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "PUT /product/variation/{product_id}/{variation_id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/variation/:product_id/:variation_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                "variation",
+                ":product_id",
+                ":variation_id"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "DELETE /product/variation/{product_id}/{variation_id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/variation/:product_id/:variation_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                "variation",
+                ":product_id",
+                ":variation_id"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /product/variation/{product_id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/variation/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                "variation",
+                ":product_id"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /product/variation/{product_id}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/variation/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                "variation",
+                ":product_id"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "get single Product",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                ":product_id"
+              ]
+            },
+            "description": "fetch signle product by product_id"
+          }
+        },
+        {
+          "name": "get single Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                ":product_id"
+              ]
+            },
+            "description": "fetch signle product by product_id"
+          }
+        },
+        {
+          "name": "get single Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/product/:product_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "product",
+                ":product_id"
+              ]
+            },
+            "description": "fetch signle product by product_id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Super Admin",
+      "item": [
+        {
+          "name": "Super Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "login"
+              ]
+            },
+            "description": "Authenticate a platform super admin. Public endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"password\": \"super-secret-123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Super Admin Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/refresh-token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "refresh-token"
+              ]
+            },
+            "description": "Exchange a super-admin refresh token for a new token pair. Public endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Super Admin Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "logout"
+              ]
+            },
+            "description": "Revoke a super-admin refresh token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Platform Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/analytics/overview",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "analytics",
+                "overview"
+              ]
+            },
+            "description": "Cross-tenant platform analytics"
+          }
+        },
+        {
+          "name": "List Tenants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "List all tenants (paginated, searchable)"
+          }
+        },
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants"
+              ]
+            },
+            "description": "Create a tenant and its owner user. Server generates the API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"domain\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Tenant Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id",
+                "status"
+              ]
+            },
+            "description": "Update a tenant's status (suspend/activate/etc)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Tenant",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id"
+              ]
+            },
+            "description": "Permanently delete a tenant and all of its data"
+          }
+        },
+        {
+          "name": "Get Tenant",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id"
+              ]
+            },
+            "description": "Get a tenant with counts and API key"
+          }
+        },
+        {
+          "name": "Impersonate Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id/impersonate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id",
+                "impersonate"
+              ]
+            },
+            "description": "Issue a tenant-scoped OWNER JWT for the target tenant so the super admin can operate its admin panel"
+          }
+        },
+        {
+          "name": "List Tenant Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "List Tenant Users"
+          }
+        },
+        {
+          "name": "List Tenant Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "List Tenant Products"
+          }
+        },
+        {
+          "name": "List Tenant Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "List Tenant Orders"
+          }
+        },
+        {
+          "name": "List Tenant Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id",
+                "payments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "List Tenant Payments"
+          }
+        },
+        {
+          "name": "List Tenant Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/tenants/:id/audit-logs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "tenants",
+                ":id",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "List Tenant Audit Logs"
+          }
+        },
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "Cross-tenant user list with tenant names"
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/users/:id/role",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "users",
+                ":id",
+                "role"
+              ]
+            },
+            "description": "Change a tenant user's role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"OWNER\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/users/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "users",
+                ":id"
+              ]
+            },
+            "description": "Delete a tenant user"
+          }
+        },
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/audit-logs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "filter",
+                  "value": "string"
+                }
+              ]
+            },
+            "description": "Cross-tenant audit logs with user info and tenant names"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenants",
+      "item": [
+        {
+          "name": "Onboard Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tenants/onboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tenants",
+                "onboard"
+              ]
+            },
+            "description": "Public endpoint: create a new store (tenant) with its owner account. No API key required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeName\": \"string\",\n  \"email\": \"string\",\n  \"password\": \"super-secret-123\",\n  \"logoImageURL\": \"string\",\n  \"domain\": \"string\",\n  \"name\": \"string\",\n  \"phone\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tenants/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tenants",
+                ""
+              ]
+            },
+            "description": "Register a new tenant/business. Returns the tenant with their API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"logoImageURL\": \"string\",\n  \"domain\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Tenant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tenants/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tenants",
+                ""
+              ]
+            },
+            "description": "Update tenant information",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"logoImageURL\": \"string\",\n  \"domain\": \"string\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current Tenant",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tenants/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tenants",
+                ""
+              ]
+            },
+            "description": "Get the authenticated tenant's information"
+          }
+        },
+        {
+          "name": "Configure Finecore",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tenants/finecore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tenants",
+                "finecore"
+              ]
+            },
+            "description": "Set up Finecore payment credentials for the tenant.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"api_key\": \"string\",\n  \"public_key\": \"string\",\n  \"webhook_secret\": \"string\",\n  \"environment\": \"sandbox\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Finecore Configuration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tenants/finecore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tenants",
+                "finecore"
+              ]
+            },
+            "description": "Retrieve the current Finecore configuration status."
+          }
+        },
+        {
+          "name": "Remove Finecore Configuration",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tenants/finecore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tenants",
+                "finecore"
+              ]
+            },
+            "description": "Delete the Finecore configuration for the tenant."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get user data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                ""
+              ]
+            },
+            "description": "Get data of the authenticated user"
+          }
+        },
+        {
+          "name": "Get user data",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                ""
+              ]
+            },
+            "description": "Get data of the authenticated user",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Finecore Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/webhook/finecore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "webhook",
+                "finecore"
+              ]
+            },
+            "description": "Endpoint to receive payment notifications from Finecore. This endpoint is public and does not require authentication.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"customer_bank_transfer\",\n  \"data\": {\n    \"id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n    \"user_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n    \"merchant_id\": \"9f1c2b34-5a67-4c89-a0de-1f2b3c4d5e6f\",\n    \"reference\": \"string\",\n    \"amount\": 0,\n    \"currency\": \"string\",\n    \"status\": \"COMPLETED\",\n    \"type\": \"CREDIT\",\n    \"category\": \"string\",\n    \"balance_before\": 0,\n    \"balance_after\": 0,\n    \"environment\": \"string\",\n    \"metadata\": {},\n    \"created_at\": \"string\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
