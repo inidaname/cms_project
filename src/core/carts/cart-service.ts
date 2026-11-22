@@ -235,7 +235,10 @@ export class CartService {
     id: string,
     user_id: string,
     tenant_id: string,
-    data: Pick<Partial<CartsInput>, "status">
+    data: Pick<
+      Partial<CartsInput>,
+      "status" | "notes" | "recipientName" | "recipientPhone" | "deliveryAddress" | "deliveryType"
+    >,
   ) {
     return await this.prisma.cart.update({
       where: { id, tenant_id, user_id },

@@ -1042,6 +1042,19 @@ export const adminHandler = (app: FastifyInstance) => {
       }
     },
 
+    getOrder: async (request: any, reply: any) => {
+      if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
+      try {
+        const result = await adminService.manageOrders(request.tenant.id, "get", { id: request.params.id });
+        if (!result) {
+          return reply.status(404).send({ status: "error", message: "Order not found" });
+        }
+        return reply.status(200).send({ status: "success", data: result });
+      } catch (error: any) {
+        return reply.status(400).send({ status: "error", message: error.message });
+      }
+    },
+
     updateOrderStatus: async (request: any, reply: any) => {
       if (!request.tenant) return reply.status(401).send({ status: "error", message: "Unauthorized" });
       try {

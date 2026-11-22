@@ -1172,6 +1172,32 @@ export const OrderSchemas = {
     },
   },
 
+  getOrder: {
+    summary: "Get Order",
+    description:
+      "Single order with customer, payments, delivery, and cart lines (with the purchase-time configuration snapshots).",
+    tags: ["Admin"],
+    security: [{ bearerAuth: [] }],
+    params: {
+      type: "object",
+      properties: { id: { type: "string", format: "uuid" } },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          data: {
+            type: "object",
+            description:
+              "Sales row (sales# fields) plus paidBy customer, payments, delivery, and cart with cart items.",
+            additionalProperties: true,
+          },
+        },
+      },
+    },
+  },
+
   updateOrderStatus: {
     summary: "Update Order Status",
     description: "Update order status",

@@ -107,6 +107,47 @@ export const CartSchemas = {
       },
     },
   },
+  getCarts: {
+    summary: "List Carts",
+    description:
+      "Paginated carts for the authenticated customer (rows include their cart items).",
+    tags: ["Carts"],
+    security: [
+      {
+        apiKey: [],
+        bearerAuth: [],
+      },
+    ],
+    querystring: {
+      type: "object",
+      properties: {
+        page: { type: "integer", minimum: 1, default: 1 },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 10 },
+        filter: { type: "string", enum: ["Active", "Abandoned", "Checkedout"] },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          message: { type: "string" },
+          code: { type: "string" },
+          data: {
+            type: "object",
+            properties: {
+              data: {
+                type: "array",
+                description: "Cart rows (cart# fields plus cart items).",
+                items: { type: "object", additionalProperties: true },
+              },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
+        },
+      },
+    },
+  },
   getCartbyId: {
     summary: "Get Single Cart",
     description: "Get Cart and the items by cart_id",
@@ -217,6 +258,44 @@ export const CartSchemas = {
       },
     },
   },
+  updateOrderDetails: {
+    description: "Attach notes and delivery info to the cart before checkout",
+    tags: ["Carts"],
+    security: [
+      {
+        apiKey: [],
+        bearerAuth: [],
+      },
+    ],
+    params: {
+      type: "object",
+      properties: { cart_id: { type: "string", format: "uuid" } },
+    },
+    body: {
+      type: "object",
+      properties: {
+        notes: {
+          type: "string",
+
+        },
+        recipientName: { type: "string" },
+        recipientPhone: { type: "string" },
+        deliveryAddress: { type: "string" },
+        deliveryType: {
+          type: "string",
+          enum: ["PICKUP", "DELIVERY", "SHIPPING"],
+        },
+      },
+    },
+    response: {
+      200: {
+        allOf: [
+          { $ref: "baseResponse#" },
+          { type: "object", properties: { data: { $ref: "cart#" } } },
+        ],
+      },
+    },
+  },
 };
 
 export const ExtendedCartSchemas = {
@@ -248,31 +327,6 @@ export const ExtendedCartSchemas = {
               quantity: { type: "number" },
             },
           },
-        },
-      },
-    },
-  },
-
-  updateOrderDetails: {
-    description: "Attach notes and delivery info to the cart before checkout",
-    tags: ["Carts"],
-    params: {
-      type: "object",
-      properties: { cart_id: { type: "string", format: "uuid" } },
-    },
-    body: {
-      type: "object",
-      properties: {
-        notes: {
-          type: "string",
-
-        },
-        recipientName: { type: "string" },
-        recipientPhone: { type: "string" },
-        deliveryAddress: { type: "string" },
-        deliveryType: {
-          type: "string",
-          enum: ["PICKUP", "DELIVERY", "SHIPPING"],
         },
       },
     },

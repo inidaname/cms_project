@@ -6,41 +6,46 @@ export const cartsHandler: CartsHandler = (app) => {
   const service = new CartService(app.prisma);
 
   return {
-    // editCartLogistics: async (request, reply) => {
-    //   const { cart_id } = request.params;
-    //   const result = await service.updateLogistics(cart_id, request.body);
+    updateOrderDetails: async (request, reply) => {
+      if (!request.tenant) {
+        return;
+      }
+      const {
+        tenant: { id: tenant_id },
+        params: { cart_id },
+        user: { id },
+        body,
+      } = request;
 
-    //   return reply.status(StatusCode.SuccessOK).send({
-    //     status: "success",
-    //     data: result as any,
-    //   } as any);
-    // },
-    // addBundleToCart: async (request, reply) => {
-    //   try {
-    //     const { id: tenant_id } = request.tenant!;
-    //     const user_id = (request.user as any).id;
-    //     const { cart_id } = request.params;
-    //     const body: any = request.body;
+      const cart = await service.editCart(cart_id, id, tenant_id, body);
 
-    //     const result = await service.addBundleToCart({
-    //       tenant_id,
-    //       user_id,
-    //       cart_id,
-    //       ...body,
-    //     });
+      return reply.status(StatusCode.SuccessOK).send({
+        data: cart,
+        message: CASSuccessMessage.DATA_UPDATED,
+        code: CASSuccessCode.DATA_UPDATED,
+        status: "success",
+      });
+    },
+    changeCartStatus: async (request, reply) => {
+      if (!request.tenant) {
+        return;
+      }
+      const {
+        tenant: { id: tenant_id },
+        params: { cart_id },
+        user: { id },
+        body,
+      } = request;
 
-    //     return reply.status(StatusCode.SuccessOK).send({
-    //       status: "success",
-    //       message: "Bundle added to cart successfully",
-    //       data: result,
-    //     } as any);
-    //   } catch (error: any) {
-    //     return reply.status(StatusCode.ClientErrorBadRequest).send({
-    //       status: "error",
-    //       message: error.message,
-    //     } as any);
-    //   }
-    // },
+      const cart = await service.editCart(cart_id!, id, tenant_id, body);
+
+      return reply.status(StatusCode.SuccessOK).send({
+        data: cart,
+        message: CASSuccessMessage.DATA_UPDATED,
+        code: CASSuccessCode.DATA_UPDATED,
+        status: "success",
+      });
+    },
     addItmesToCart: async (request, reply) => {
       if (!request.tenant) {
         return;
@@ -113,26 +118,6 @@ export const cartsHandler: CartsHandler = (app) => {
         status: "success",
         code: CASSuccessCode.DATA_CREATED,
         message: CASSuccessMessage.DATA_CREATED,
-      });
-    },
-    changeCartStatus: async (request, reply) => {
-      if (!request.tenant) {
-        return;
-      }
-      const {
-        tenant: { id: tenant_id },
-        params: { cart_id },
-        user: { id },
-        body,
-      } = request;
-
-      const cart = await service.editCart(cart_id!, id, tenant_id, body);
-
-      return reply.status(StatusCode.SuccessOK).send({
-        data: cart,
-        message: CASSuccessMessage.DATA_UPDATED,
-        code: CASSuccessCode.DATA_UPDATED,
-        status: "success",
       });
     },
     getCartById: async (request, reply) => {

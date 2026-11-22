@@ -195,6 +195,11 @@ export class ProductService {
         cartItems: true,
         owner: true,
         productVariations: true,
+        optionGroups: {
+          orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+          include: { choices: { orderBy: { createdAt: "asc" } } },
+        },
+        offeringSlots: { orderBy: { startsAt: "asc" } },
       },
     });
   }

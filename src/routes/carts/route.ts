@@ -6,7 +6,7 @@ const cartRoute: PluginType = async (app, opts) => {
   app.addHook("onRequest", app.authenticate);
 
   app.post("/", { schema: CartSchemas.startCart }, handler.startCart);
-  app.get("/", handler.getCarts);
+  app.get("/", { schema: CartSchemas.getCarts }, handler.getCarts);
   app.get(
     "/items/cart/:cart_id",
     { schema: CartSchemas.getCartbyId },
@@ -42,6 +42,11 @@ const cartRoute: PluginType = async (app, opts) => {
     "/c/status/:cart_id?",
     { schema: CartSchemas.editCartStatus },
     handler.changeCartStatus
+  );
+  app.put(
+    "/c/:cart_id",
+    { schema: CartSchemas.updateOrderDetails },
+    handler.updateOrderDetails
   );
   app.delete(
     "/c/:cart_id",

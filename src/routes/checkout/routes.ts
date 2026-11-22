@@ -12,7 +12,7 @@ const checkoutRoutes: PluginType = async (app, opts) => {
     { schema: SalesSchemas.getCheckoutById },
     handler.getCheckoutById
   );
-  app.get("/", handler.getCheckouts);
+  app.get("/", { schema: SalesSchemas.getCheckouts }, handler.getCheckouts);
 };
 
 export default checkoutRoutes;

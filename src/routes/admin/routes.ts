@@ -106,6 +106,7 @@ const adminRoutes: PluginType = async (app) => {
   app.put("/products/bundle/:product_id", { schema: ProductSchemas.editBundle }, handler.editBundle);
 
   app.get("/orders", { schema: OrderSchemas.listOrders }, handler.listOrders);
+  app.get("/orders/:id", { schema: OrderSchemas.getOrder }, handler.getOrder);
   app.put("/orders/status", { schema: OrderSchemas.updateOrderStatus }, handler.updateOrderStatus);
   app.put("/orders/delivery", { schema: OrderSchemas.updateDelivery }, handler.updateDelivery);
 

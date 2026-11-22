@@ -7,6 +7,73 @@ const paginationQuery = {
   },
 };
 
+const uuid = () => ({ type: "string", format: "uuid" });
+
+// Paginated envelope for /super-admin sub-lists:
+// { status, data: { data: [...], metadata } }.
+function tenantSubListResponse(itemSchema: object) {
+  return {
+    200: {
+      type: "object",
+      properties: {
+        status: { type: "string" },
+        data: {
+          type: "object",
+          properties: {
+            data: { type: "array", items: itemSchema },
+            metadata: {
+              type: "object",
+              properties: {
+                total: { type: "integer" },
+                page: { type: "integer" },
+                limit: { type: "integer" },
+                totalPages: { type: "integer" },
+                hasNextPage: { type: "boolean" },
+                hasPrevPage: { type: "boolean" },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
+// Audit-log row shape: entity + actor fields plus (on the platform list)
+// the resolved tenant name. `details` is provider-defined JSON.
+function auditLogRow(withTenant: boolean) {
+  return {
+    type: "object",
+    properties: {
+      id: uuid(),
+      tenant_id: uuid(),
+      user_id: { type: "string", format: "uuid", nullable: true },
+      action: { type: "string", enum: ["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "INVITE", "REMOVE", "TRANSFER"] },
+      entityType: { type: "string", enum: ["USER", "PRODUCT", "ORDER", "PAYMENT", "SETTINGS", "TEAM", "PROJECT"] },
+      entityId: { type: "string", nullable: true },
+      details: { type: "object", additionalProperties: true, nullable: true },
+      ipAddress: { type: "string", nullable: true },
+      userAgent: { type: "string", nullable: true },
+      user: {
+        type: "object",
+        nullable: true,
+        properties: {
+          name: { type: "string", nullable: true },
+          email: { type: "string", nullable: true },
+        },
+      },
+      ...(withTenant && {
+        tenant: {
+          type: "object",
+          nullable: true,
+          properties: { name: { type: "string" } },
+        },
+      }),
+      createdAt: { type: "string" },
+    },
+  };
+}
+
 const tokenResponse = {
   200: {
     type: "object",
@@ -203,6 +270,17 @@ export const SuperAdminSchemas: Record<string, any> = {
     tags: ["Super Admin"],
     security: [{ bearerAuth: [] }],
     querystring: paginationQuery,
+    response: tenantSubListResponse({
+      id: uuid(),
+      tenant_id: uuid(),
+      email: { type: "string", format: "email" },
+      name: { type: "string", nullable: true },
+      phone: { type: "string", nullable: true },
+      role: { type: "string", enum: ["OWNER", "ADMIN", "USER"] },
+      agreed: { type: "boolean", nullable: true },
+      createdAt: { type: "string" },
+      updatedAt: { type: "string" },
+    }),
   },
 
   listTenantProducts: {
@@ -210,6 +288,11 @@ export const SuperAdminSchemas: Record<string, any> = {
     tags: ["Super Admin"],
     security: [{ bearerAuth: [] }],
     querystring: paginationQuery,
+    response: tenantSubListResponse({
+      type: "object",
+      description: "Product row (product# fields).",
+      additionalProperties: true,
+    }),
   },
 
   listTenantOrders: {
@@ -217,6 +300,11 @@ export const SuperAdminSchemas: Record<string, any> = {
     tags: ["Super Admin"],
     security: [{ bearerAuth: [] }],
     querystring: paginationQuery,
+    response: tenantSubListResponse({
+      type: "object",
+      description: "Sales row (sales# fields) plus cart with cart items.",
+      additionalProperties: true,
+    }),
   },
 
   listTenantPayments: {
@@ -224,6 +312,7 @@ export const SuperAdminSchemas: Record<string, any> = {
     tags: ["Super Admin"],
     security: [{ bearerAuth: [] }],
     querystring: paginationQuery,
+    response: tenantSubListResponse({ $ref: "payment#" }),
   },
 
   listTenantAuditLogs: {
@@ -231,6 +320,7 @@ export const SuperAdminSchemas: Record<string, any> = {
     tags: ["Super Admin"],
     security: [{ bearerAuth: [] }],
     querystring: paginationQuery,
+    response: tenantSubListResponse(auditLogRow(true)),
   },
 
   listUsers: {
@@ -239,6 +329,25 @@ export const SuperAdminSchemas: Record<string, any> = {
     tags: ["Super Admin"],
     security: [{ bearerAuth: [] }],
     querystring: paginationQuery,
+    response: tenantSubListResponse({
+      id: uuid(),
+      tenant_id: uuid(),
+      email: { type: "string", format: "email" },
+      name: { type: "string", nullable: true },
+      phone: { type: "string", nullable: true },
+      role: { type: "string", enum: ["OWNER", "ADMIN", "USER", "SUPER_ADMIN"] },
+      agreed: { type: "boolean", nullable: true },
+      createdAt: { type: "string" },
+      updatedAt: { type: "string" },
+      tenant: {
+        type: "object",
+        properties: {
+          id: uuid(),
+          name: { type: "string" },
+          domain: { type: "string" },
+        },
+      },
+    }),
   },
 
   updateUserRole: {
@@ -274,6 +383,7 @@ export const SuperAdminSchemas: Record<string, any> = {
     tags: ["Super Admin"],
     security: [{ bearerAuth: [] }],
     querystring: paginationQuery,
+    response: tenantSubListResponse(auditLogRow(true)),
   },
 };
 

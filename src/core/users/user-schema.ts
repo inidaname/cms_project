@@ -20,7 +20,7 @@ export const UserSchema = {
   },
   updateUser: {
     summary: "Get user data",
-    description: "Get data of the authenticated user",
+    description: "Update the authenticated user's profile fields",
     tags: ["User"],
     security: [
       {
@@ -32,6 +32,8 @@ export const UserSchema = {
       type: "object",
       properties: {
         name: { type: "string" },
+        email: { type: "string", format: "email" },
+        phone: { type: "string" },
       },
     },
     response: {

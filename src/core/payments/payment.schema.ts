@@ -75,6 +75,22 @@ export const PaymentSchemas = {
           },
         },
       },
+      409: {
+        description:
+          "A payment already exists for this sale (idempotent initiation). The existing payment is returned in data.payment — verify or resume it via GET /payments/verify/{payment.reference}. The hosted-checkout return query parameters are provider-controlled; treat the `reference` returned here (or carried in return URLs) as the only verification input, never as proof of payment.",
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          code: { type: "string" },
+          message: { type: "string" },
+          data: {
+            type: "object",
+            properties: {
+              payment: PaymentSchema,
+            },
+          },
+        },
+      },
     },
   },
 

@@ -85,4 +85,45 @@ export const SalesSchemas = {
       },
     },
   },
+  getCheckouts: {
+    summary: "List Checkouts (Order History)",
+    description:
+      "Paginated order history for the authenticated customer. Rows are sales records (sales# fields) plus the source cart (with frozen configuration snapshots), payments, and the paying customer.",
+    tags: ["Checkout"],
+    security: [
+      {
+        apiKey: [],
+        bearerAuth: [],
+      },
+    ],
+    querystring: {
+      type: "object",
+      properties: {
+        page: { type: "integer", minimum: 1, default: 1 },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 10 },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          message: { type: "string" },
+          code: { type: "string" },
+          data: {
+            type: "object",
+            properties: {
+              data: {
+                type: "array",
+                description:
+                  "Sales rows (sales# fields plus cart with configuration snapshots, payments, paidBy customer).",
+                items: { type: "object", additionalProperties: true },
+              },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
+        },
+      },
+    },
+  },
 };

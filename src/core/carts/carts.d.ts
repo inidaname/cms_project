@@ -12,6 +12,11 @@ type CartsHandler = (app: FastifyInstance) => {
     Omit<CartsInput, "status" | "user_id" | "tenant_id">,
     Cart
   >;
+  updateOrderDetails: Handler<
+    Pick<Partial<CartsInput>, "notes" | "recipientName" | "recipientPhone" | "deliveryAddress" | "deliveryType">,
+    Cart,
+    { cart_id: string }
+  >;
   addItmesToCart: Handler<
     Omit<CartItemsInput, "cart_id" | "value">[],
     Cart,

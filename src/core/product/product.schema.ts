@@ -56,7 +56,8 @@ export const ProductRouteSchemas = {
   },
   getOne: {
     summary: "get single Product",
-    description: "fetch signle product by product_id",
+    description:
+      "fetch signle product by product_id. When the merchant configured a flexible offering, the response includes optionGroups (with choices), offeringSlots, and productVariations.",
     tags: ["Products"],
     params: {
       type: "object",
@@ -70,6 +71,46 @@ export const ProductRouteSchemas = {
           { $ref: "baseResponse#" },
           { type: "object", properties: { data: { $ref: "product#" } } },
         ],
+      },
+    },
+  },
+  getTenantProducts: {
+    summary: "List Products",
+    description:
+      "Paginated product list for the tenant. Rows are product records plus merchant relations (variations, counts); envelope is the standard paginated shape.",
+    tags: ["Products"],
+    security: [
+      {
+        apiKey: [],
+      },
+    ],
+    querystring: {
+      type: "object",
+      properties: {
+        page: { type: "integer", minimum: 1, default: 1 },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 10 },
+        filter: { type: "string", description: "Title search" },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          message: { type: "string" },
+          code: { type: "string" },
+          data: {
+            type: "object",
+            properties: {
+              data: {
+                type: "array",
+                description: "Product rows (product# fields plus merchant relations).",
+                items: { type: "object", additionalProperties: true },
+              },
+              metadata: { $ref: "paginationMetadata#" },
+            },
+          },
+        },
       },
     },
   },

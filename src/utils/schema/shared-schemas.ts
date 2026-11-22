@@ -34,7 +34,7 @@ export const SharedSchemas = {
         logoImageURL: { type: "string", format: "uri", nullable: true },
         domain: { type: "string" },
         apiKey: { type: "string" },
-        status: { type: "string", enum: ["ACTIVE", "EXPIRED", "DELETED", "OUTDATED", "ABANDONED"] },
+        status: { type: "string", enum: ["ACTIVE", "SUSPENDED", "EXPIRED", "DELETED", "OUTDATED", "ABANDONED"] },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },
@@ -74,6 +74,48 @@ export const SharedSchemas = {
         isFeatured: { type: "boolean" },
         min_items: { type: "integer", nullable: true },
         max_items: { type: "integer", nullable: true },
+        productVariations: { type: "array", items: { $ref: "productVariation#" } },
+        optionGroups: {
+          type: "array",
+          description: "Configurable option groups (present when the merchant configured them).",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              name: { type: "string" },
+              required: { type: "boolean" },
+              min_select: { type: "integer" },
+              max_select: { type: "integer" },
+              choices: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string", format: "uuid" },
+                    label: { type: "string" },
+                    price_delta: { type: "number" },
+                    active: { type: "boolean" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        offeringSlots: {
+          type: "array",
+          description: "Bookable time slots (present when the merchant configured them).",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              startsAt: { type: "string", format: "date-time" },
+              endsAt: { type: "string", format: "date-time" },
+              capacity: { type: "integer", nullable: true },
+              bookedCount: { type: "integer" },
+              location: { type: "string", nullable: true },
+            },
+          },
+        },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },

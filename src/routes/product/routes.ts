@@ -9,7 +9,7 @@ const productRoutes: PluginType = async (app, opts) => {
     { preHandler: [app.authenticate], schema: ProductRouteSchemas.create },
     handler.createProduct
   );
-  app.get("/", handler.getTenantProducts);
+  app.get("/", { schema: ProductRouteSchemas.getTenantProducts }, handler.getTenantProducts);
   app.post(
     "/bundle/:product_id",
     {
